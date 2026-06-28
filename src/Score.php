@@ -14,10 +14,11 @@ class Score extends CommonDBTM
         return _n('Pontuação', 'Pontuações', $nb, 'gamification');
     }
 
-    /** Active entity of the current session (0 = root). Used as default scope. */
+    /** All XP data is stored at entity 0 (global). Visibility per-entity is
+     *  handled separately by Config::isEnabledForCurrentEntity(). */
     public static function curEntity(): int
     {
-        return (int) ($_SESSION['glpiactive_entity'] ?? 0);
+        return 0;
     }
 
     public static function getOrCreate(int $users_id, ?int $entities_id = null): array

@@ -28,7 +28,7 @@ class EventListener
             if (!$users_id) {
                 return;
             }
-            $entities_id = (int) ($ticket->fields['entities_id'] ?? 0);
+            $entities_id = 0;
 
             // Ticket Solved (status 5)
             if ($new_status == Ticket::SOLVED || $new_status == Ticket::CLOSED) {
@@ -113,7 +113,7 @@ class EventListener
         if (!$users_id) {
             return;
         }
-        $entities_id = self::getTicketEntity((int) $satisfaction->fields['tickets_id']);
+        $entities_id = 0;
 
         $rating = (int)$satisfaction->fields['satisfaction'];
 
@@ -150,7 +150,7 @@ class EventListener
         }
 
         $users_id = $item->fields['users_id'];
-        $entities_id = (int) ($item->fields['entities_id'] ?? 0);
+        $entities_id = 0;
         if ($rule = Rule::getRuleForEvent('kb_article_created')) {
             if (!self::alreadyAwarded($users_id, 'kb_article_created', 'KnowbaseItem', $item->fields['id'])) {
                 Score::addXP($users_id, $rule['xp_value'], 'kb_article_created', 'KnowbaseItem', $item->fields['id'], sprintf(__('Artigo KB %d criado', 'gamification'), $item->fields['id']), $entities_id);
