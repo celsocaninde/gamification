@@ -240,7 +240,7 @@ foreach ($kpis as [$ico, $lbl, $val, $accent]) {
 echo "</div>";
 
 // ── Aderência: filtro de período + KPIs + tabela por técnico ─────────────────
-$self = $_SERVER['PHP_SELF'];
+$self = Plugin::getWebDir('gamification') . '/front/analytics.php';
 
 echo "<div class='gx-card gx-card-pad mb-4'>";
 

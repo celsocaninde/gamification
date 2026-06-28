@@ -39,7 +39,7 @@ class Menu extends CommonGLPI
     public static function getMenuContent(): array|false
     {
         $is_admin    = Session::haveRight('plugin_gamification_admin', READ);
-        $show_player = Session::haveRight(self::$rightname, READ) && Config::isEnabledForCurrentEntity();
+        $show_player = $is_admin || (Session::haveRight(self::$rightname, READ) && Config::isEnabledForCurrentEntity());
 
         if (!$show_player && !$is_admin) {
             return false;
