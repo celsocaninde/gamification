@@ -1,0 +1,404 @@
+# GLPI Gamification Plugin - Brazilian Portuguese Translation
+# Copyright (C) 2024-2026 Gamification Plugin Team
+# This file is distributed under the same license as the Gamification plugin.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gamification 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-01 00:00+0000\n"
+"PO-Revision-Date: 2026-01-01 00:00+0000\n"
+"Last-Translator: Gamification Team\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Gamificação Service Desk"
+msgstr "Gamificação Service Desk"
+
+msgid "Gamification"
+msgstr "Gamificação"
+
+msgid "Dashboard"
+msgstr "Painel"
+
+msgid "Leaderboard"
+msgstr "Ranking"
+
+msgid "Badges"
+msgstr "Conquistas"
+
+msgid "Rewards"
+msgstr "Recompensas"
+
+msgid "My Profile"
+msgstr "Meu Perfil"
+
+msgid "Rules"
+msgstr "Regras"
+
+msgid "Seasons"
+msgstr "Temporadas"
+
+msgid "Configuration"
+msgstr "Configuração"
+
+msgid "Orders"
+msgstr "Pedidos"
+
+msgid "XP Total"
+msgstr "XP Total"
+
+msgid "XP Available"
+msgstr "XP Disponível"
+
+msgid "XP Season"
+msgstr "XP da Temporada"
+
+msgid "Level"
+msgstr "Nível"
+
+msgid "Tickets Resolved"
+msgstr "Tickets Resolvidos"
+
+msgid "First Contact Resolution"
+msgstr "Resolução no 1º Contato"
+
+msgid "SLA Met"
+msgstr "SLA Cumprido"
+
+msgid "Perfect Satisfaction"
+msgstr "Satisfação Perfeita"
+
+msgid "KB Articles"
+msgstr "Artigos da Base"
+
+msgid "Current Streak"
+msgstr "Sequência Atual"
+
+msgid "Best Streak"
+msgstr "Melhor Sequência"
+
+msgid "days"
+msgstr "dias"
+
+msgid "Rank"
+msgstr "Posição"
+
+msgid "Name"
+msgstr "Nome"
+
+msgid "Score"
+msgstr "Pontuação"
+
+msgid "Badge"
+msgstr "Conquista"
+
+msgid "Description"
+msgstr "Descrição"
+
+msgid "Event Type"
+msgstr "Tipo de Evento"
+
+msgid "XP Value"
+msgstr "Valor XP"
+
+msgid "Active"
+msgstr "Ativo"
+
+msgid "Inactive"
+msgstr "Inativo"
+
+msgid "Rarity"
+msgstr "Raridade"
+
+msgid "Common"
+msgstr "Comum"
+
+msgid "Rare"
+msgstr "Raro"
+
+msgid "Epic"
+msgstr "Épico"
+
+msgid "Legendary"
+msgstr "Lendário"
+
+msgid "Category"
+msgstr "Categoria"
+
+msgid "Speed"
+msgstr "Velocidade"
+
+msgid "Quality"
+msgstr "Qualidade"
+
+msgid "Knowledge"
+msgstr "Conhecimento"
+
+msgid "Dedication"
+msgstr "Dedicação"
+
+msgid "Milestone"
+msgstr "Marco"
+
+msgid "Earned on"
+msgstr "Conquistado em"
+
+msgid "Not yet earned"
+msgstr "Ainda não conquistado"
+
+msgid "Redeem"
+msgstr "Resgatar"
+
+msgid "XP Cost"
+msgstr "Custo em XP"
+
+msgid "Stock"
+msgstr "Estoque"
+
+msgid "Unlimited"
+msgstr "Ilimitado"
+
+msgid "Out of stock"
+msgstr "Fora de estoque"
+
+msgid "Insufficient XP"
+msgstr "XP Insuficiente"
+
+msgid "Confirm Redemption"
+msgstr "Confirmar Resgate"
+
+msgid "Are you sure you want to redeem this reward?"
+msgstr "Tem certeza que deseja resgatar esta recompensa?"
+
+msgid "Redemption successful!"
+msgstr "Resgate realizado com sucesso!"
+
+msgid "Pending"
+msgstr "Pendente"
+
+msgid "Approved"
+msgstr "Aprovado"
+
+msgid "Delivered"
+msgstr "Entregue"
+
+msgid "Rejected"
+msgstr "Rejeitado"
+
+msgid "Approve"
+msgstr "Aprovar"
+
+msgid "Reject"
+msgstr "Rejeitar"
+
+msgid "Admin Notes"
+msgstr "Notas do Admin"
+
+msgid "Business Hours Start"
+msgstr "Início do Horário Comercial"
+
+msgid "Business Hours End"
+msgstr "Fim do Horário Comercial"
+
+msgid "Business Days"
+msgstr "Dias Úteis"
+
+msgid "Season Duration"
+msgstr "Duração da Temporada"
+
+msgid "Monthly"
+msgstr "Mensal"
+
+msgid "Quarterly"
+msgstr "Trimestral"
+
+msgid "FCR Max Time (minutes)"
+msgstr "Tempo Máximo FCR (minutos)"
+
+msgid "Enable Penalties"
+msgstr "Habilitar Penalidades"
+
+msgid "Enable Rewards Shop"
+msgstr "Habilitar Loja de Recompensas"
+
+msgid "Yes"
+msgstr "Sim"
+
+msgid "No"
+msgstr "Não"
+
+msgid "Save"
+msgstr "Salvar"
+
+msgid "Ticket resolved"
+msgstr "Ticket resolvido"
+
+msgid "First Contact Resolution (FCR)"
+msgstr "Resolução no 1º Contato (FCR)"
+
+msgid "SLA met - resolved before deadline"
+msgstr "SLA cumprido - resolvido antes do prazo"
+
+msgid "5-star satisfaction rating"
+msgstr "Avaliação de satisfação 5 estrelas"
+
+msgid "4-star satisfaction rating"
+msgstr "Avaliação de satisfação 4 estrelas"
+
+msgid "Knowledge Base article created"
+msgstr "Artigo da Base de Conhecimento criado"
+
+msgid "Ticket reopened (penalty)"
+msgstr "Ticket reaberto (penalidade)"
+
+msgid "Recent Activity"
+msgstr "Atividade Recente"
+
+msgid "Top Scorers"
+msgstr "Melhores Pontuadores"
+
+msgid "Recent Badges"
+msgstr "Conquistas Recentes"
+
+msgid "Team XP"
+msgstr "XP da Equipe"
+
+msgid "Your Gamification Stats"
+msgstr "Suas Estatísticas de Gamificação"
+
+msgid "All Groups"
+msgstr "Todos os Grupos"
+
+msgid "All Seasons"
+msgstr "Todas as Temporadas"
+
+msgid "Current Season"
+msgstr "Temporada Atual"
+
+msgid "Filter by Group"
+msgstr "Filtrar por Grupo"
+
+msgid "Filter by Season"
+msgstr "Filtrar por Temporada"
+
+msgid "Start Date"
+msgstr "Data de Início"
+
+msgid "End Date"
+msgstr "Data de Fim"
+
+msgid "View Dashboard"
+msgstr "Ver Painel"
+
+msgid "View Leaderboard"
+msgstr "Ver Ranking"
+
+msgid "Use Rewards Shop"
+msgstr "Usar Loja de Recompensas"
+
+msgid "Administrate"
+msgstr "Administrar"
+
+msgid "No data available"
+msgstr "Nenhum dado disponível"
+
+msgid "Reward Orders"
+msgstr "Pedidos de Resgate"
+
+msgid "XP Spent"
+msgstr "XP Gasto"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Date"
+msgstr "Data"
+
+msgid "Actions"
+msgstr "Ações"
+
+msgid "Season"
+msgstr "Temporada"
+
+msgid "Group"
+msgstr "Grupo"
+
+msgid "Monday"
+msgstr "Segunda-feira"
+
+msgid "Tuesday"
+msgstr "Terça-feira"
+
+msgid "Wednesday"
+msgstr "Quarta-feira"
+
+msgid "Thursday"
+msgstr "Quinta-feira"
+
+msgid "Friday"
+msgstr "Sexta-feira"
+
+msgid "Saturday"
+msgstr "Sábado"
+
+msgid "Sunday"
+msgstr "Domingo"
+
+msgid "Progress to next level"
+msgstr "Progresso para o próximo nível"
+
+msgid "Badge earned!"
+msgstr "Conquista desbloqueada!"
+
+msgid "XP gained!"
+msgstr "XP recebido!"
+
+msgid "Reward redeemed successfully"
+msgstr "Recompensa resgatada com sucesso"
+
+msgid "Order approved"
+msgstr "Pedido aprovado"
+
+msgid "Order rejected - XP refunded"
+msgstr "Pedido rejeitado - XP reembolsado"
+
+msgid "No badges earned yet"
+msgstr "Nenhuma conquista ainda"
+
+msgid "Keep going! Complete tasks to earn badges."
+msgstr "Continue assim! Complete tarefas para conquistar medalhas."
+
+msgid "Your XP Balance"
+msgstr "Seu Saldo de XP"
+
+msgid "Ranking Position"
+msgstr "Posição no Ranking"
+
+msgid "of"
+msgstr "de"
+
+msgid "XP History"
+msgstr "Histórico de XP"
+
+msgid "Reward History"
+msgstr "Histórico de Recompensas"
+
+msgid "Plugin enabled"
+msgstr "Plugin habilitado"
+
+msgid "General Settings"
+msgstr "Configurações Gerais"
+
+msgid "Scoring Rules"
+msgstr "Regras de Pontuação"
+
+msgid "Penalty Settings"
+msgstr "Configurações de Penalidade"
+
+msgid "Shop Settings"
+msgstr "Configurações da Loja"

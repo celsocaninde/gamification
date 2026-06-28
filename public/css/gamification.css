@@ -1,0 +1,686 @@
+/* =========================================================================
+   Gamificação — "Service Desk Arena" design system
+   Loaded globally by GLPI, so everything is namespaced (gx- / .gamification-*)
+   and page layout rules are scoped under .gamification-wrapper to avoid bleed.
+   ========================================================================= */
+
+:root {
+  /* Brand */
+  --gx-violet:      #6d5bff;
+  --gx-violet-700:  #5847e0;
+  --gx-cyan:        #22d3ee;
+  --gx-gold:        #ffb020;
+  --gx-green:       #19c37d;
+  --gx-ember:       #ff5470;
+
+  /* Ranked tiers (bronze → legendary) */
+  --gx-bronze:    #cd7f4f;
+  --gx-silver:    #9aa7b4;
+  --gx-goldtier:  #f5b301;
+  --gx-platinum:  #34d3c6;
+  --gx-diamond:   #5b8cff;
+
+  /* Rarity */
+  --rarity-common:    #94a3b8;
+  --rarity-uncommon:  #22c55e;
+  --rarity-rare:      #3b82f6;
+  --rarity-epic:      #a855f7;
+  --rarity-legendary: #f5b301;
+  --rarity-mythic:    #f43f5e;
+
+  /* Surfaces (light) */
+  --gx-surface:    #ffffff;
+  --gx-surface-2:  #f6f7fb;
+  --gx-line:       rgba(17, 24, 39, 0.08);
+  --gx-ink:        #0f172a;
+  --gx-muted:      #64748b;
+  --gx-shadow:     0 1px 2px rgba(16,24,40,.04), 0 12px 32px -12px rgba(76,73,150,.22);
+  --gx-shadow-lg:  0 24px 60px -20px rgba(40,38,120,.35);
+
+  /* Signature gradients */
+  --gx-grad-arena:  linear-gradient(135deg, #6d5bff 0%, #8b5cf6 45%, #22d3ee 120%);
+  --gx-grad-xp:     linear-gradient(90deg, #22d3ee, #6d5bff);
+  --gx-grad-gold:   linear-gradient(135deg, #ffd76a, #ffb020 60%, #ff8a3d);
+}
+
+/* GLPI 11 ships several dark palettes — cover them all */
+[data-glpi-theme="dark"],
+[data-glpi-theme="darker"],
+[data-glpi-theme="midnight"],
+[data-glpi-theme="auror_dark"] {
+  --gx-surface:    #161b2e;
+  --gx-surface-2:  #1e2440;
+  --gx-line:       rgba(255, 255, 255, 0.08);
+  --gx-ink:        #e7ecf6;
+  --gx-muted:      #93a0bd;
+  --gx-shadow:     0 1px 2px rgba(0,0,0,.3), 0 18px 40px -18px rgba(0,0,0,.6);
+  --gx-shadow-lg:  0 28px 70px -22px rgba(0,0,0,.7);
+}
+
+/* Animatable conic progress for the Level Orb */
+@property --gx-p {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* ---------------------------------------------------------------- Base --- */
+.gamification-wrapper {
+  color: var(--gx-ink);
+}
+.gamification-wrapper .text-muted { color: var(--gx-muted) !important; }
+
+.gx-eyebrow {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gx-muted);
+  margin: 0;
+}
+
+.gx-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -.02em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ----------------------------------------------------------- Card shell --- */
+.gx-card,
+.gamify-card {                 /* keep legacy alias so untouched pages survive */
+  background: var(--gx-surface);
+  border: 1px solid var(--gx-line);
+  border-radius: 18px;
+  box-shadow: var(--gx-shadow);
+  transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease;
+}
+.gx-card.is-hover:hover,
+.gamify-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--gx-shadow-lg);
+}
+.gx-card-pad { padding: 1.35rem 1.5rem; }
+
+/* ============================================================ HERO BANNER == */
+.gx-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 1.75rem;
+  color: #fff;
+  background: var(--gx-grad-arena);
+  box-shadow: var(--gx-shadow-lg);
+}
+.gx-hero::before {            /* tactical grid texture */
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at 78% 18%, #000 0%, transparent 62%);
+  pointer-events: none;
+}
+.gx-hero::after {            /* glow blob */
+  content: "";
+  position: absolute;
+  top: -40%; right: -8%;
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(34,211,238,.55), transparent 60%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+.gx-hero > * { position: relative; z-index: 1; }
+.gx-hero .gx-eyebrow { color: rgba(255,255,255,.78); }
+.gx-hero-name { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; margin: .15rem 0 .1rem; }
+.gx-hero-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+.gx-chip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  backdrop-filter: blur(6px);
+  padding: .32rem .7rem;
+  border-radius: 999px;
+  font-size: .82rem; font-weight: 600;
+}
+.gx-chip i { font-size: .95rem; }
+
+/* ============================================================ LEVEL ORB === */
+/* Signature element: conic XP ring around the level number. */
+.gx-orb {
+  --gx-end: 0;
+  position: relative;
+  width: var(--gx-orb-size, 132px);
+  height: var(--gx-orb-size, 132px);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    conic-gradient(from -90deg,
+      var(--gx-cyan) 0,
+      var(--gx-violet) calc(var(--gx-p) * 1%),
+      rgba(255,255,255,.16) calc(var(--gx-p) * 1%),
+      rgba(255,255,255,.16) 100%);
+  animation: gx-orb-fill 1.1s cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes gx-orb-fill { to { --gx-p: var(--gx-end); } }
+.gx-orb::after {            /* glow */
+  content: "";
+  position: absolute; inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,211,238,.45), transparent 70%);
+  z-index: -1;
+  opacity: .9;
+}
+.gx-orb-core {
+  width: calc(100% - 18px);
+  height: calc(100% - 18px);
+  border-radius: 50%;
+  background: rgba(15,18,38,.55);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.gx-orb-core .gx-orb-lvl { font-size: 2.4rem; }
+.gx-orb-core .gx-orb-cap { font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; opacity: .8; margin-top: 2px; }
+
+/* On-surface variant (used inside white cards, e.g. user tab) */
+.gx-orb--ink .gx-orb-core { background: var(--gx-surface-2); color: var(--gx-ink); box-shadow: inset 0 0 0 1px var(--gx-line); }
+
+/* ========================================================== STAT TILES === */
+.gx-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+.gx-stat {
+  position: relative;
+  background: var(--gx-surface);
+  border: 1px solid var(--gx-line);
+  border-radius: 16px;
+  padding: 1.05rem 1.15rem;
+  box-shadow: var(--gx-shadow);
+  overflow: hidden;
+  transition: transform .2s ease;
+}
+.gx-stat:hover { transform: translateY(-2px); }
+.gx-stat::before {           /* accent rail */
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--gx-accent, var(--gx-violet));
+}
+.gx-stat-ico {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: grid; place-items: center;
+  font-size: 1.25rem; margin-bottom: .7rem;
+  color: var(--gx-accent, var(--gx-violet));
+  background: color-mix(in srgb, var(--gx-accent, var(--gx-violet)) 14%, transparent);
+}
+.gx-stat-val { font-size: 1.7rem; }
+.gx-stat-lbl { font-size: .78rem; color: var(--gx-muted); margin-top: .15rem; }
+.gx-stat--violet { --gx-accent: var(--gx-violet); }
+.gx-stat--cyan   { --gx-accent: var(--gx-cyan); }
+.gx-stat--gold   { --gx-accent: var(--gx-gold); }
+.gx-stat--green  { --gx-accent: var(--gx-green); }
+.gx-stat--ember  { --gx-accent: var(--gx-ember); }
+.gx-stat--slate  { --gx-accent: #7c8aa3; }
+
+/* Clickable stat tiles (link to the underlying GLPI list) */
+a.gx-stat {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+a.gx-stat:hover {
+  border-color: var(--gx-accent, var(--gx-violet));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .14);
+}
+.gx-stat-go {
+  position: absolute;
+  top: .55rem;
+  right: .7rem;
+  font-size: 1rem;
+  color: var(--gx-muted);
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity .2s ease, transform .2s ease, color .2s ease;
+}
+a.gx-stat:hover .gx-stat-go {
+  opacity: .9;
+  transform: translate(0, 0);
+  color: var(--gx-accent, var(--gx-violet));
+}
+
+/* =========================================================== XP BAR ======= */
+.gx-xpbar, .xp-progress-wrapper {
+  position: relative; height: 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--gx-violet) 14%, transparent);
+  overflow: hidden;
+}
+.gx-xpbar-fill, .xp-progress-bar {
+  position: absolute; inset: 0 auto 0 0; height: 100%;
+  border-radius: 999px;
+  background: var(--gx-grad-xp);
+  box-shadow: 0 0 14px rgba(34,211,238,.5);
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.gx-xpbar-fill::after, .xp-progress-bar::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  animation: gx-shimmer 2.2s infinite;
+}
+@keyframes gx-shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+
+/* ============================================================ PODIUM ====== */
+/* Signature element 2: top-3 ranked pedestals. */
+.gx-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: end;
+  gap: .75rem;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.gx-podium-col { display: flex; flex-direction: column; align-items: center; }
+.gx-podium-ava {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 1.4rem; color: #fff;
+  background: var(--gx-violet);
+  box-shadow: 0 0 0 3px var(--gx-surface), 0 0 0 6px var(--tier, var(--gx-silver));
+  margin-bottom: .55rem;
+}
+.gx-podium-name { font-weight: 700; font-size: .9rem; text-align: center; max-width: 12ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-podium-xp { font-size: .8rem; color: var(--gx-muted); }
+.gx-podium-step {
+  width: 100%; margin-top: .6rem; border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tier) 26%, var(--gx-surface)), var(--gx-surface));
+  border: 1px solid var(--gx-line); border-bottom: none;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 1.5rem; color: var(--tier);
+}
+.gx-podium-col[data-rank="1"] { order: 2; }
+.gx-podium-col[data-rank="2"] { order: 1; }
+.gx-podium-col[data-rank="3"] { order: 3; }
+.gx-podium-col[data-rank="1"] .gx-podium-step { height: 104px; }
+.gx-podium-col[data-rank="2"] .gx-podium-step { height: 78px; }
+.gx-podium-col[data-rank="3"] .gx-podium-step { height: 60px; }
+.gx-podium-col[data-rank="1"] .gx-podium-ava { width: 78px; height: 78px; font-size: 1.7rem; }
+.gx-crown { color: var(--gx-goldtier); font-size: 1.3rem; margin-bottom: .15rem;
+  filter: drop-shadow(0 2px 6px rgba(245,179,1,.5)); animation: gx-bob 2.6s ease-in-out infinite; }
+@keyframes gx-bob { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-4px);} }
+
+.tier-1 { --tier: var(--gx-goldtier); }
+.tier-2 { --tier: var(--gx-silver); }
+.tier-3 { --tier: var(--gx-bronze); }
+
+/* ====================================================== SEGMENTED TABS === */
+.gx-seg {
+  display: inline-flex; padding: 4px; gap: 4px;
+  background: var(--gx-surface-2); border: 1px solid var(--gx-line); border-radius: 12px;
+}
+.gx-seg-btn {
+  display: inline-flex; align-items: center; padding: .4rem .95rem; border-radius: 9px;
+  font-weight: 600; font-size: .88rem; color: var(--gx-muted); text-decoration: none;
+  transition: all .15s ease;
+}
+.gx-seg-btn:hover { color: var(--gx-ink); }
+.gx-seg-btn.is-active {
+  background: var(--gx-surface); color: var(--gx-violet);
+  box-shadow: var(--gx-shadow);
+}
+
+/* ========================================================= LEADERBOARD === */
+.gx-board { width: 100%; border-collapse: separate; border-spacing: 0 .55rem; }
+.gx-board thead th {
+  font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--gx-muted); font-weight: 700; padding: .25rem 1rem;
+}
+.gx-board tbody tr {
+  background: var(--gx-surface);
+  box-shadow: var(--gx-shadow);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.gx-board tbody tr:hover { transform: translateX(3px); }
+.gx-board td { padding: .85rem 1rem; vertical-align: middle; }
+.gx-board td:first-child { border-radius: 14px 0 0 14px; }
+.gx-board td:last-child  { border-radius: 0 14px 14px 0; }
+.gx-board tr.is-me {
+  outline: 2px solid var(--gx-violet);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gx-violet) 18%, transparent);
+}
+.gx-rank-pill {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  font-weight: 800; font-variant-numeric: tabular-nums;
+  background: var(--gx-surface-2); color: var(--gx-muted);
+}
+.gx-ava {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; color: #fff; background: var(--gx-violet);
+  box-shadow: 0 0 0 2px var(--gx-surface), 0 0 0 4px var(--tier, transparent);
+}
+
+/* keep legacy leaderboard styling working */
+.leaderboard-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+.leaderboard-table tr { background: var(--gx-surface); box-shadow: var(--gx-shadow); border-radius: 8px; }
+.leaderboard-table td, .leaderboard-table th { padding: 1rem; vertical-align: middle; }
+.current-user-row { outline: 2px solid var(--gx-violet) !important; }
+
+/* ============================================================ BADGES ====== */
+.gx-badge {
+  position: relative; text-align: center;
+  padding: 1.5rem 1.1rem 1.25rem;
+  border-radius: 18px;
+  border: 1px solid var(--gx-line);
+  background: var(--gx-surface);
+  box-shadow: var(--gx-shadow);
+  height: 100%;
+  display: flex; flex-direction: column;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.gx-badge:hover { transform: translateY(-4px); box-shadow: var(--gx-shadow-lg); }
+.gx-badge::before {            /* rarity top band */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px;
+  background: var(--rarity, var(--rarity-common));
+  border-radius: 18px 18px 0 0;
+}
+.gx-badge.is-locked { opacity: .55; filter: grayscale(.85); }
+.gx-badge.is-locked:hover { opacity: .8; filter: grayscale(.4); }
+.gx-badge-orb {
+  width: 86px; height: 86px; margin: 0 auto 1rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--rarity) 22%, transparent), var(--gx-surface-2));
+  box-shadow: inset 0 0 0 1px var(--gx-line);
+}
+.gx-badge.is-earned .gx-badge-orb {
+  box-shadow: inset 0 0 0 1px var(--gx-line), 0 0 22px color-mix(in srgb, var(--rarity) 55%, transparent);
+  animation: gx-badgeglow 3s ease-in-out infinite alternate;
+}
+@keyframes gx-badgeglow {
+  from { box-shadow: inset 0 0 0 1px var(--gx-line), 0 0 14px color-mix(in srgb, var(--rarity) 35%, transparent); }
+  to   { box-shadow: inset 0 0 0 1px var(--gx-line), 0 0 28px color-mix(in srgb, var(--rarity) 70%, transparent); }
+}
+.gx-badge.rarity-legendary.is-earned .gx-badge-orb {     /* holo sheen */
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.5), transparent 45%),
+    conic-gradient(from 0deg, #ffd76a, #ff8a3d, #f5b301, #ffd76a);
+}
+.gx-badge.rarity-mythic.is-earned .gx-badge-orb {        /* mythic holo */
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), transparent 45%),
+    conic-gradient(from 0deg, #f43f5e, #d946ef, #fb7185, #f43f5e);
+}
+.gx-badge-check { position: absolute; top: .65rem; right: .7rem; color: var(--gx-green); font-size: 1.25rem; }
+.gx-badge-name { font-weight: 700; margin-bottom: .35rem; }
+.gx-badge-desc { font-size: .82rem; color: var(--gx-muted); flex: 1 0 auto; min-height: 38px; margin-bottom: .9rem; }
+
+.rarity-tag {
+  align-self: center;
+  font-size: .64rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+  padding: .22rem .6rem; border-radius: 999px;
+  color: var(--rarity);
+  background: color-mix(in srgb, var(--rarity) 14%, transparent);
+}
+.rarity-common    { --rarity: var(--rarity-common); }
+.rarity-uncommon  { --rarity: var(--rarity-uncommon); }
+.rarity-rare      { --rarity: var(--rarity-rare); }
+.rarity-epic      { --rarity: var(--rarity-epic); }
+.rarity-legendary { --rarity: var(--rarity-legendary); }
+.rarity-mythic    { --rarity: var(--rarity-mythic); }
+
+/* legacy badge classes */
+.badge-card.locked { opacity: .55; filter: grayscale(.85); }
+.rarity-badge { font-size: .7rem; text-transform: uppercase; padding: .2rem .5rem; border-radius: 4px; font-weight: 600; }
+
+/* ====================================================== PROFILE RIGHTS === */
+.gx-rights-card { width: 100%; max-width: none; margin: 1.25rem 0; }
+.gx-rights-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; }
+.gx-rights-emblem {
+  width: 54px; height: 54px; border-radius: 16px; flex: 0 0 auto;
+  display: grid; place-items: center; font-size: 1.8rem; color: #fff;
+  background: var(--gx-grad-arena);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--gx-violet) 75%, transparent);
+}
+.gx-rights { display: flex; flex-direction: column; gap: .35rem; }
+.gx-right-row {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .9rem 1rem; border-radius: 15px;
+  border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.gx-right-row:hover { background: var(--gx-surface-2); border-color: var(--gx-line); transform: translateX(2px); }
+.gx-right-ico {
+  width: 46px; height: 46px; border-radius: 14px; flex: 0 0 auto;
+  display: grid; place-items: center; font-size: 1.45rem;
+  color: var(--gx-accent, var(--gx-violet));
+  background: color-mix(in srgb, var(--gx-accent, var(--gx-violet)) 15%, transparent);
+}
+.gx-right-body { flex: 1 1 auto; min-width: 0; }
+.gx-right-title { font-weight: 700; line-height: 1.25; }
+.gx-right-desc { font-size: .82rem; color: var(--gx-muted); margin-top: .12rem; }
+.gx-right-row--dashboard   { --gx-accent: var(--gx-violet); }
+.gx-right-row--leaderboard { --gx-accent: var(--gx-gold); }
+.gx-right-row--rewards     { --gx-accent: var(--gx-cyan); }
+.gx-right-row--admin       { --gx-accent: var(--gx-ember); }
+
+/* Toggle switch */
+.gx-switch { position: relative; display: inline-block; width: 50px; height: 28px; flex: 0 0 auto; cursor: pointer; }
+.gx-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.gx-switch-track {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--gx-surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--gx-line);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.gx-switch-track::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  transition: transform .24s cubic-bezier(.34,1.56,.64,1);
+}
+.gx-switch input:checked + .gx-switch-track {
+  background: var(--gx-accent, var(--gx-green));
+  box-shadow: inset 0 0 0 1.5px transparent,
+              0 0 16px -2px color-mix(in srgb, var(--gx-accent, var(--gx-green)) 70%, transparent);
+}
+.gx-switch input:checked + .gx-switch-track::after { transform: translateX(22px); }
+.gx-switch input:focus-visible + .gx-switch-track {
+  outline: 2px solid color-mix(in srgb, var(--gx-violet) 50%, transparent); outline-offset: 2px;
+}
+
+/* Read-only pill */
+.gx-pill {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: .3rem .8rem; border-radius: 999px; white-space: nowrap;
+}
+.gx-pill--on  { color: var(--gx-green); background: color-mix(in srgb, var(--gx-green) 16%, transparent); }
+.gx-pill--off { color: var(--gx-muted); background: var(--gx-surface-2); }
+
+.gx-rights-foot {
+  display: flex; justify-content: flex-end; align-items: center; gap: .9rem;
+  margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px solid var(--gx-line);
+}
+
+/* ============================================================ REWARDS ===== */
+.gx-shop-hero {
+  border-radius: 22px; padding: 1.5rem 1.75rem; color: #fff;
+  background: var(--gx-grad-gold);
+  box-shadow: var(--gx-shadow-lg);
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+}
+.gx-shop-hero .gx-eyebrow { color: rgba(0,0,0,.55); }
+.gx-balance { font-size: 2rem; color: #1a1205; }
+.gx-reward, .reward-card { display: flex; flex-direction: column; height: 100%; }
+.gx-reward-top {
+  height: 130px; border-radius: 18px 18px 0 0; position: relative;
+  display: grid; place-items: center; font-size: 2.6rem; color: #fff;
+  background: var(--gx-grad-arena);
+}
+.gx-reward-cost {
+  position: absolute; top: .7rem; right: .7rem;
+  background: #fff; color: #1a1205; font-weight: 800;
+  padding: .25rem .7rem; border-radius: 999px; font-size: .85rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.reward-img { height: 150px; background: var(--gx-surface-2); display: grid; place-items: center; font-size: 3rem; color: var(--gx-muted); }
+
+/* ========================================================= ACTIVITY FEED == */
+.gx-feed { display: flex; flex-direction: column; }
+.gx-feed-row {
+  display: flex; align-items: center; gap: .9rem;
+  padding: .7rem 0; border-bottom: 1px solid var(--gx-line);
+}
+.gx-feed-row:last-child { border-bottom: none; }
+.gx-feed-ico {
+  width: 36px; height: 36px; flex: 0 0 auto; border-radius: 10px;
+  display: grid; place-items: center; font-size: 1.05rem;
+}
+.gx-feed-pos { background: color-mix(in srgb, var(--gx-green) 16%, transparent); color: var(--gx-green); }
+.gx-feed-neg { background: color-mix(in srgb, var(--gx-ember) 16%, transparent); color: var(--gx-ember); }
+.gx-feed-body { flex: 1 1 auto; min-width: 0; }
+.gx-feed-desc { font-weight: 600; font-size: .9rem; }
+.gx-feed-time { font-size: .74rem; color: var(--gx-muted); }
+.gx-feed-amt { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ===================================================== central widget ===== */
+.gx-central {
+  border-radius: 18px; overflow: hidden;
+  border: 1px solid var(--gx-line); box-shadow: var(--gx-shadow);
+  background: var(--gx-surface);
+}
+.gx-central-head { background: var(--gx-grad-arena); color: #fff; padding: .9rem 1.1rem; font-weight: 700; }
+
+/* ============================================================ CONFIG ====== */
+.gx-cfg-row { padding: .95rem 0; border-bottom: 1px solid var(--gx-line); }
+.gx-cfg-row:last-child { border-bottom: none; }
+.gx-cfg-ico {
+  font-size: 1.15rem; color: var(--gx-violet); margin-top: .1rem;
+  width: 26px; flex: 0 0 auto; text-align: center;
+}
+.gamification-wrapper .gx-cfg-row select,
+.gamification-wrapper .gx-cfg-row input[type="time"],
+.gamification-wrapper .gx-cfg-row input[type="number"] { max-width: 240px; }
+/* day chips */
+.gx-day { cursor: pointer; user-select: none; }
+.gx-day input { position: absolute; opacity: 0; pointer-events: none; }
+.gx-day span {
+  display: inline-grid; place-items: center; min-width: 44px; padding: .35rem .6rem;
+  border: 1px solid var(--gx-line); border-radius: 10px; font-size: .8rem; font-weight: 600;
+  color: var(--gx-muted); background: var(--gx-surface); transition: all .15s ease;
+}
+.gx-day input:checked + span {
+  background: var(--gx-violet); border-color: var(--gx-violet); color: #fff;
+  box-shadow: 0 4px 12px -4px var(--gx-violet);
+}
+.gx-day input:focus-visible + span { outline: 2px solid var(--gx-cyan); outline-offset: 2px; }
+
+/* ============================================================ QUESTS ====== */
+.gx-quest { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
+.gx-quest:hover { transform: translateY(-3px); box-shadow: var(--gx-shadow-lg); }
+.gx-quest.is-complete { border-color: color-mix(in srgb, var(--gx-green) 45%, var(--gx-line)); }
+.gx-quest.is-complete::before {
+  content: ""; position: absolute; inset: 0; border-radius: 18px; pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gx-green) 35%, transparent);
+}
+.gx-quest-ico {
+  width: 46px; height: 46px; flex: 0 0 auto; border-radius: 13px;
+  display: grid; place-items: center; font-size: 1.4rem; color: #fff;
+  background: var(--gx-grad-arena);
+}
+.gx-quest.is-complete .gx-quest-ico { background: linear-gradient(135deg, var(--gx-green), #0ea371); }
+.gx-quest-reward {
+  font-weight: 800; color: var(--gx-gold);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* ============================================================ CHART ======= */
+.gx-chart {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  align-items: end; gap: .4rem; height: 180px;
+}
+.gx-chart-col { display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.gx-chart-bar {
+  width: 70%; max-width: 36px; min-height: 2px; border-radius: 6px 6px 0 0;
+  background: var(--gx-grad-xp);
+  transition: height .8s cubic-bezier(.2,.8,.2,1), filter .15s ease;
+}
+.gx-chart-col:hover .gx-chart-bar { filter: brightness(1.12); }
+.gx-chart-val { font-size: .68rem; font-weight: 700; color: var(--gx-muted); margin-top: .3rem; font-variant-numeric: tabular-nums; }
+.gx-chart-day { font-size: .66rem; color: var(--gx-muted); margin-top: .1rem; white-space: nowrap; }
+
+/* ========================================================= XP float / fx == */
+.xp-float {
+  position: absolute; color: var(--gx-gold); font-weight: 800; font-size: 1.5rem;
+  pointer-events: none; z-index: 9999; text-shadow: 0 2px 4px rgba(0,0,0,.3);
+  animation: floatUp 1.5s forwards ease-out;
+}
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(0) scale(.8); }
+  20% { opacity: 1; transform: translateY(-20px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1); }
+}
+
+/* confetti burst on level-up */
+.gx-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 1080; overflow: hidden; }
+.gx-confetti i {
+  position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px;
+  animation: gx-fall linear forwards;
+}
+@keyframes gx-fall {
+  to { transform: translateY(105vh) rotate(720deg); opacity: .2; }
+}
+
+.gamify-toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1085; display: flex; flex-direction: column; gap: .6rem; max-width: 360px; }
+
+/* Rich gamification toasts (XP / level up / badge unlocked) */
+.gx-toast {
+  display: flex; align-items: center; gap: .85rem;
+  padding: .8rem 1rem; border-radius: 14px;
+  background: var(--gx-surface); color: var(--gx-ink);
+  border: 1px solid var(--gx-line);
+  border-left: 4px solid var(--gx-accent, var(--gx-cyan));
+  box-shadow: var(--gx-shadow-lg);
+  opacity: 0; transform: translateX(28px) scale(.98);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.gx-toast.is-in { opacity: 1; transform: translateX(0) scale(1); }
+.gx-toast-ico {
+  width: 42px; height: 42px; border-radius: 12px; flex: 0 0 auto;
+  display: grid; place-items: center; font-size: 1.35rem;
+  color: var(--gx-accent, var(--gx-cyan));
+  background: color-mix(in srgb, var(--gx-accent, var(--gx-cyan)) 16%, transparent);
+}
+.gx-toast-title { font-weight: 800; font-size: .95rem; line-height: 1.2; }
+.gx-toast-text  { font-size: .8rem; color: var(--gx-muted); margin-top: .1rem; }
+.gx-toast--cyan   { --gx-accent: var(--gx-cyan); }
+.gx-toast--violet { --gx-accent: var(--gx-violet); }
+.gx-toast--gold   { --gx-accent: var(--gx-gold); }
+.gx-toast--green  { --gx-accent: var(--gx-green); }
+.gx-toast--ember  { --gx-accent: var(--gx-ember); }
+
+/* ============================================================ responsive == */
+@media (max-width: 768px) {
+  .gx-hero { padding: 1.25rem; }
+  .gx-hero-name { font-size: 1.35rem; }
+  .gx-orb { --gx-orb-size: 108px; }
+  .gx-podium { max-width: 100%; }
+}
+
+/* ============================================================ a11y ======== */
+.gamification-wrapper a:focus-visible,
+.gamification-wrapper button:focus-visible {
+  outline: 2px solid var(--gx-cyan); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gamification-wrapper *,
+  .gx-confetti i { animation: none !important; transition: none !important; }
+  .gx-orb { --gx-p: var(--gx-end); }
+}
