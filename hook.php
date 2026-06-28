@@ -507,6 +507,44 @@ function plugin_gamification_install(): bool
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TABLE 13: Battle Pass Tiers (per season)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!$DB->tableExists('glpi_plugin_gamification_battlepass_tiers')) {
+        $DB->doQuery("CREATE TABLE `glpi_plugin_gamification_battlepass_tiers` (
+            `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `seasons_id`   INT UNSIGNED NOT NULL,
+            `tier_num`     INT NOT NULL,
+            `xp_required`  INT NOT NULL,
+            `name`         VARCHAR(255) NOT NULL,
+            `icon`         VARCHAR(100) NOT NULL DEFAULT 'ti ti-gift',
+            `icon_color`   VARCHAR(20) DEFAULT '#FFD700',
+            `reward_type`  VARCHAR(20) NOT NULL DEFAULT 'xp_bonus',
+            `reward_value` VARCHAR(255) DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `seasons_id` (`seasons_id`),
+            UNIQUE KEY `season_tier` (`seasons_id`, `tier_num`)
+        ) $charset");
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TABLE 14: Battle Pass Claims (which tiers each user earned)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!$DB->tableExists('glpi_plugin_gamification_battlepass_claims')) {
+        $DB->doQuery("CREATE TABLE `glpi_plugin_gamification_battlepass_claims` (
+            `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `users_id`      INT UNSIGNED NOT NULL,
+            `entities_id`   INT UNSIGNED NOT NULL DEFAULT 0,
+            `seasons_id`    INT UNSIGNED NOT NULL,
+            `tier_num`      INT NOT NULL,
+            `date_creation` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `users_id`   (`users_id`),
+            KEY `seasons_id` (`seasons_id`),
+            UNIQUE KEY `user_season_tier` (`users_id`, `seasons_id`, `tier_num`, `entities_id`)
+        ) $charset");
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Register profile rights
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     $rights = [
@@ -566,10 +604,15 @@ function plugin_gamification_install(): bool
         'comment' => 'Concede XP por missões semanais concluídas',
         'mode'    => \CronTask::MODE_EXTERNAL,
     ]);
+    \CronTask::register(\GlpiPlugin\Gamification\Cron::class, 'CheckBattlePass', HOUR_TIMESTAMP, [
+        'comment' => 'Concede recompensas de tiers do Battle Pass',
+        'mode'    => \CronTask::MODE_EXTERNAL,
+    ]);
 
     // Idempotent schema upgrade: add per-entity scoping to existing installs.
     plugin_gamification_ensure_entity_columns();
     plugin_gamification_ensure_notify_column();
+    plugin_gamification_ensure_battlepass_tables();
 
     return true;
 }
@@ -667,6 +710,8 @@ function plugin_gamification_uninstall(): bool
         'glpi_plugin_gamification_rewardorders',
         'glpi_plugin_gamification_quests',
         'glpi_plugin_gamification_questclaims',
+        'glpi_plugin_gamification_battlepass_tiers',
+        'glpi_plugin_gamification_battlepass_claims',
     ];
 
     foreach ($tables as $table) {
@@ -690,4 +735,46 @@ function plugin_gamification_uninstall(): bool
     \CronTask::unregister('gamification');
 
     return true;
+}
+
+/**
+ * Idempotently create the two battle pass tables on existing installs that
+ * ran before the feature was added. Safe to call on every install/upgrade.
+ */
+function plugin_gamification_ensure_battlepass_tables(): void
+{
+    global $DB;
+    $charset = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
+
+    if (!$DB->tableExists('glpi_plugin_gamification_battlepass_tiers')) {
+        $DB->doQuery("CREATE TABLE `glpi_plugin_gamification_battlepass_tiers` (
+            `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `seasons_id`   INT UNSIGNED NOT NULL,
+            `tier_num`     INT NOT NULL,
+            `xp_required`  INT NOT NULL,
+            `name`         VARCHAR(255) NOT NULL,
+            `icon`         VARCHAR(100) NOT NULL DEFAULT 'ti ti-gift',
+            `icon_color`   VARCHAR(20) DEFAULT '#FFD700',
+            `reward_type`  VARCHAR(20) NOT NULL DEFAULT 'xp_bonus',
+            `reward_value` VARCHAR(255) DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `seasons_id` (`seasons_id`),
+            UNIQUE KEY `season_tier` (`seasons_id`, `tier_num`)
+        ) $charset");
+    }
+
+    if (!$DB->tableExists('glpi_plugin_gamification_battlepass_claims')) {
+        $DB->doQuery("CREATE TABLE `glpi_plugin_gamification_battlepass_claims` (
+            `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `users_id`      INT UNSIGNED NOT NULL,
+            `entities_id`   INT UNSIGNED NOT NULL DEFAULT 0,
+            `seasons_id`    INT UNSIGNED NOT NULL,
+            `tier_num`      INT NOT NULL,
+            `date_creation` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `users_id`   (`users_id`),
+            KEY `seasons_id` (`seasons_id`),
+            UNIQUE KEY `user_season_tier` (`users_id`, `seasons_id`, `tier_num`, `entities_id`)
+        ) $charset");
+    }
 }

@@ -210,18 +210,13 @@ class EventListener
 
     private static function wasEscalated(int $tickets_id): bool
     {
-        // Simple heuristic: if there's more than one assigned tech historically, or group changed.
-        global $DB;
-        $techs = countElementsInTable('glpi_tickets_users', [
+        // A ticket is considered escalated if more than one individual technician
+        // is simultaneously assigned to it at resolution time. Group routing is
+        // intentionally excluded — adding/changing groups is administrative, not
+        // a hand-off to another person.
+        return countElementsInTable('glpi_tickets_users', [
             'tickets_id' => $tickets_id,
-            'type'       => \CommonITILActor::ASSIGN
-        ]);
-        
-        $groups = countElementsInTable('glpi_groups_tickets', [
-            'tickets_id' => $tickets_id,
-            'type'       => \CommonITILActor::ASSIGN
-        ]);
-
-        return ($techs > 1 || $groups > 1);
+            'type'       => \CommonITILActor::ASSIGN,
+        ]) > 1;
     }
 }

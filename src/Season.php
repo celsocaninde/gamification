@@ -80,8 +80,13 @@ class Season extends CommonDBTM
             'date_end'   => $end->format('Y-m-d'),
             'is_active'  => 1
         ]);
-        
-        return $DB->insertId();
+
+        $new_id = $DB->insertId();
+
+        // Seed default battle pass tiers for the new season.
+        BattlePass::seedForSeason($new_id);
+
+        return $new_id;
     }
 
     public function showForm($id, array $options = []): bool

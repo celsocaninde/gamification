@@ -12,17 +12,13 @@ class Cron extends CommonDBTM
     {
         switch ($name) {
             case 'CheckBadges':
-                return [
-                    'description' => __('Check and award badges', 'gamification')
-                ];
+                return ['description' => __('Check and award badges', 'gamification')];
             case 'ProcessSeason':
-                return [
-                    'description' => __('Process and rotate gamification seasons', 'gamification')
-                ];
+                return ['description' => __('Process and rotate gamification seasons', 'gamification')];
             case 'CheckQuests':
-                return [
-                    'description' => __('Award XP for completed weekly quests', 'gamification')
-                ];
+                return ['description' => __('Award XP for completed weekly quests', 'gamification')];
+            case 'CheckBattlePass':
+                return ['description' => __('Award battle pass tier rewards', 'gamification')];
         }
         return [];
     }
@@ -139,6 +135,31 @@ class Cron extends CommonDBTM
                     BadgeUser::award($badge['id'], $users_id, null, $entities_id);
                 }
             }
+        }
+
+        return 1;
+    }
+
+    /**
+     * Check each (user, entity) score row and award any unlocked battle pass tiers.
+     * Idempotent: each tier is claimed at most once per user/season/entity.
+     */
+    public static function cronCheckBattlePass(CronTask $task): int
+    {
+        global $DB;
+
+        $season = Season::getActiveSeason();
+        if (!$season) {
+            return 1;
+        }
+        $seasons_id = (int) $season['id'];
+
+        // Seed tiers for the season if an admin hasn't configured them yet.
+        BattlePass::seedForSeason($seasons_id);
+
+        foreach ($DB->request(['SELECT' => ['users_id', 'entities_id'], 'FROM' => Score::$table]) as $row) {
+            BattlePass::processUserProgress((int) $row['users_id'], $seasons_id, (int) $row['entities_id']);
+            $task->addVolume(1);
         }
 
         return 1;

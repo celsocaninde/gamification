@@ -81,14 +81,10 @@ function plugin_init_gamification(): void
     ];
 
     // ── 7) Dashboard widgets ────────────────────────────────────────────
-    $PLUGIN_HOOKS[Hooks::DASHBOARD_CARDS]['gamification'] = [
-        Dashboard::class => 'getCards',
-    ];
+    $PLUGIN_HOOKS[Hooks::DASHBOARD_CARDS]['gamification'] = [[Dashboard::class, 'getCards']];
 
     // ── 8) Display on Central page ──────────────────────────────────────
-    $PLUGIN_HOOKS[Hooks::DISPLAY_CENTRAL]['gamification'] = [
-        Dashboard::class => 'showOnCentral',
-    ];
+    $PLUGIN_HOOKS[Hooks::DISPLAY_CENTRAL]['gamification'] = [[Dashboard::class, 'showOnCentral']];
 }
 
 /**

@@ -15,6 +15,13 @@ class Badge extends CommonDBTM
         return _n('Conquista', 'Conquistas', $nb, 'gamification');
     }
 
+    public static function getByName(string $name): ?array
+    {
+        global $DB;
+        $row = $DB->request(['FROM' => self::$table, 'WHERE' => ['name' => $name], 'LIMIT' => 1])->current();
+        return $row ?: null;
+    }
+
     public static function getAll(bool $activeOnly = true): array
     {
         global $DB;

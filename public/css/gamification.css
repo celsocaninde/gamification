@@ -666,6 +666,58 @@ a.gx-stat:hover .gx-stat-go {
 .gx-toast--green  { --gx-accent: var(--gx-green); }
 .gx-toast--ember  { --gx-accent: var(--gx-ember); }
 
+/* ========================================================== BATTLE PASS === */
+.gx-bp-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: .75rem;
+  padding: 1.25rem;
+}
+.gx-bp-tier {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: .45rem;
+  text-align: center;
+  background: var(--gx-surface-2);
+  border: 2px solid var(--gx-line);
+  border-radius: 16px;
+  padding: 1rem .65rem .85rem;
+  min-width: 100px;
+  transition: transform .15s;
+}
+.gx-bp-tier.is-claimed {
+  border-color: var(--gx-green);
+  background: color-mix(in srgb, var(--gx-green) 8%, var(--gx-surface-2));
+}
+.gx-bp-tier.is-unlocked {
+  border-color: var(--gx-gold);
+  background: color-mix(in srgb, var(--gx-gold) 10%, var(--gx-surface-2));
+  animation: gx-bp-pulse 2.2s ease-in-out infinite;
+}
+.gx-bp-tier.is-locked { opacity: .5; filter: grayscale(.65); }
+@keyframes gx-bp-pulse {
+  0%, 100% { box-shadow: 0 0 10px color-mix(in srgb, var(--gx-gold) 20%, transparent); }
+  50%       { box-shadow: 0 0 24px color-mix(in srgb, var(--gx-gold) 55%, transparent); }
+}
+.gx-bp-check {
+  position: absolute; top: .45rem; right: .55rem;
+  font-size: 1rem; color: var(--gx-green);
+}
+.gx-bp-num {
+  font-size: .65rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--gx-muted); line-height: 1;
+}
+.gx-bp-ico  { font-size: 2.1rem; line-height: 1; }
+.gx-bp-name { font-size: .76rem; font-weight: 700; line-height: 1.25; }
+.gx-bp-reward { font-size: .72rem; color: var(--gx-muted); }
+.gx-bp-xp     { font-size: .65rem; color: var(--gx-muted); }
+.gx-bp-claimed-label {
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gx-green);
+}
+.gx-bp-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: .75rem; }
+.gx-bp-progress-bar  { height: 10px; border-radius: 999px; background: var(--gx-line); overflow: hidden; margin-bottom: .4rem; }
+.gx-bp-progress-fill { height: 100%; border-radius: 999px; background: var(--gx-grad-xp); transition: width .6s cubic-bezier(.34,1.56,.64,1); }
+
 /* ============================================================ responsive == */
 @media (max-width: 768px) {
   .gx-hero { padding: 1.25rem; }

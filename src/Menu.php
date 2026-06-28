@@ -74,6 +74,11 @@ class Menu extends CommonGLPI
                 'page'  => $dir . '/front/quests.php',
                 'icon'  => 'ti ti-target-arrow',
             ];
+            $menu['options']['battlepass'] = [
+                'title' => __('Battle Pass', 'gamification'),
+                'page'  => $dir . '/front/battlepass.php',
+                'icon'  => 'ti ti-layers-intersect',
+            ];
 
             if (Session::haveRight('plugin_gamification_rewards', READ)) {
                 $menu['options']['rewards'] = [
@@ -100,6 +105,21 @@ class Menu extends CommonGLPI
                 'title' => __('Regras', 'gamification'),
                 'page'  => Plugin::getWebDir('gamification') . '/front/rules.php',
                 'icon'  => 'ti ti-gavel',
+            ];
+            $menu['options']['managebadges'] = [
+                'title' => __('Conquistas', 'gamification'),
+                'page'  => Plugin::getWebDir('gamification') . '/front/managebadges.php',
+                'icon'  => 'ti ti-medal-2',
+            ];
+            $menu['options']['managebattlepass'] = [
+                'title' => __('Battle Pass', 'gamification'),
+                'page'  => Plugin::getWebDir('gamification') . '/front/managebattlepass.php',
+                'icon'  => 'ti ti-layers-intersect',
+            ];
+            $menu['options']['managequests'] = [
+                'title' => __('Missões', 'gamification'),
+                'page'  => Plugin::getWebDir('gamification') . '/front/managequests.php',
+                'icon'  => 'ti ti-target-arrow',
             ];
             $menu['options']['seasons'] = [
                 'title' => __('Temporadas', 'gamification'),
