@@ -161,18 +161,61 @@ class EventListener
     private static function getAssignedTechnician(int $tickets_id): ?int
     {
         global $DB;
+
+        // Prefer directly assigned user
         $row = $DB->request([
             'SELECT' => 'users_id',
             'FROM'   => 'glpi_tickets_users',
             'WHERE'  => [
                 'tickets_id' => $tickets_id,
-                'type'       => \CommonITILActor::ASSIGN // 2
+                'type'       => \CommonITILActor::ASSIGN,
+                ['users_id'  => ['>', 0]],
             ],
             'ORDER'  => 'id DESC',
-            'LIMIT'  => 1
+            'LIMIT'  => 1,
         ])->current();
 
-        return $row ? (int)$row['users_id'] : null;
+        if ($row && (int) $row['users_id'] > 0) {
+            return (int) $row['users_id'];
+        }
+
+        // Fall back to a member of an assigned group who last updated the ticket
+        $group_row = $DB->request([
+            'SELECT' => 'groups_id',
+            'FROM'   => 'glpi_groups_tickets',
+            'WHERE'  => [
+                'tickets_id' => $tickets_id,
+                'type'       => \CommonITILActor::ASSIGN,
+            ],
+            'LIMIT'  => 1,
+        ])->current();
+
+        if (!$group_row) {
+            return null;
+        }
+
+        $member = $DB->request([
+            'SELECT' => ['glpi_tickets.users_id_lastupdater'],
+            'FROM'   => 'glpi_tickets',
+            'LEFT JOIN' => [
+                'glpi_groups_users' => [
+                    'ON' => [
+                        'glpi_groups_users' => 'users_id',
+                        'glpi_tickets'      => 'users_id_lastupdater',
+                    ],
+                ],
+            ],
+            'WHERE' => [
+                'glpi_tickets.id'                    => $tickets_id,
+                'glpi_groups_users.groups_id'        => $group_row['groups_id'],
+                ['glpi_tickets.users_id_lastupdater' => ['>', 0]],
+            ],
+            'LIMIT' => 1,
+        ])->current();
+
+        return ($member && (int) $member['users_id_lastupdater'] > 0)
+            ? (int) $member['users_id_lastupdater']
+            : null;
     }
 
     private static function alreadyAwarded(int $users_id, string $event_type, string $itemtype, int $items_id): bool

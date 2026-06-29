@@ -136,6 +136,11 @@ class Menu extends CommonGLPI
                 'page'  => Plugin::getWebDir('gamification') . '/front/config.form.php',
                 'icon'  => 'ti ti-settings',
             ];
+            $menu['options']['recalculate'] = [
+                'title' => __('Recalcular Pontuações', 'gamification'),
+                'page'  => Plugin::getWebDir('gamification') . '/front/recalculate.php',
+                'icon'  => 'ti ti-refresh',
+            ];
         }
 
         return $menu;

@@ -174,6 +174,145 @@ class Score extends CommonDBTM
         return (int)floor(sqrt(max(0, $xp_total) / $base)) + 1;
     }
 
+    /**
+     * Rebuild the scores aggregate for a single user from XP transactions.
+     * Safe to call multiple times — fully idempotent.
+     */
+    public static function recalculate(int $users_id, ?int $entities_id = null): void
+    {
+        global $DB;
+        $entities_id ??= self::curEntity();
+
+        // Counters from positive transactions by event type
+        $counts = [
+            'tickets_resolved'     => 0,
+            'fcr_count'            => 0,
+            'sla_met_count'        => 0,
+            'perfect_satisfaction' => 0,
+            'kb_articles'          => 0,
+        ];
+
+        $event_map = [
+            'ticket_resolved'     => 'tickets_resolved',
+            'ticket_resolved_fcr' => 'fcr_count',
+            'sla_met'             => 'sla_met_count',
+            'satisfaction_max'    => 'perfect_satisfaction',
+            'kb_article_created'  => 'kb_articles',
+        ];
+
+        // Replay transactions chronologically to rebuild xp_total / xp_available
+        $xp_total     = 0;
+        $xp_available = 0;
+
+        $txs = $DB->request([
+            'FROM'  => XPTransaction::$table,
+            'WHERE' => ['users_id' => $users_id, 'entities_id' => $entities_id],
+            'ORDER' => 'id ASC',
+        ]);
+
+        foreach ($txs as $tx) {
+            $amount     = (int) $tx['xp_amount'];
+            $event_type = (string) $tx['event_type'];
+
+            // Rebuild xp_total (same logic as addXP / removeXP, no reward spending)
+            if ($event_type === 'reward_redemption') {
+                $xp_available = max(0, $xp_available - abs($amount));
+            } elseif ($amount >= 0) {
+                $xp_total     += $amount;
+                $xp_available += $amount;
+            } else {
+                // Penalty: reduces both
+                $xp_total     = max(0, $xp_total + $amount);
+                $xp_available = max(0, $xp_available + $amount);
+            }
+
+            // Count stat events
+            if ($amount > 0 && isset($event_map[$event_type])) {
+                $counts[$event_map[$event_type]]++;
+            }
+        }
+
+        // XP for current active season only
+        $xp_season = 0;
+        $active    = Season::getActiveSeason();
+        if ($active) {
+            $row = $DB->request([
+                'SELECT' => [new \Glpi\DBAL\QueryExpression('SUM(`xp_amount`) AS `total`')],
+                'FROM'   => XPTransaction::$table,
+                'WHERE'  => [
+                    'users_id'    => $users_id,
+                    'entities_id' => $entities_id,
+                    'event_type'  => ['<>', 'reward_redemption'],
+                    ['date_creation' => ['>=', $active['date_start'] . ' 00:00:00']],
+                ],
+            ])->current();
+            $xp_season = max(0, (int) ($row['total'] ?? 0));
+        }
+
+        $new_level = self::calculateLevel($xp_total);
+
+        $exists = countElementsInTable(self::$table, [
+            'users_id'    => $users_id,
+            'entities_id' => $entities_id,
+        ]);
+
+        $data = [
+            'xp_total'             => $xp_total,
+            'xp_available'         => $xp_available,
+            'xp_season'            => $xp_season,
+            'level'                => $new_level,
+            'tickets_resolved'     => $counts['tickets_resolved'],
+            'fcr_count'            => $counts['fcr_count'],
+            'sla_met_count'        => $counts['sla_met_count'],
+            'perfect_satisfaction' => $counts['perfect_satisfaction'],
+            'kb_articles'          => $counts['kb_articles'],
+            'date_mod'             => date('Y-m-d H:i:s'),
+        ];
+
+        if ($exists) {
+            $DB->update(self::$table, $data, [
+                'users_id'    => $users_id,
+                'entities_id' => $entities_id,
+            ]);
+        } else {
+            $DB->insert(self::$table, array_merge($data, [
+                'users_id'    => $users_id,
+                'entities_id' => $entities_id,
+            ]));
+        }
+
+        // Sync leaderboard
+        if ($active) {
+            Leaderboard::updateEntry($users_id, $xp_season, $active['id'], $entities_id);
+        }
+    }
+
+    /**
+     * Recalculate scores for ALL users who have XP transactions.
+     * Returns number of users processed.
+     */
+    public static function recalculateAll(?int $entities_id = null): int
+    {
+        global $DB;
+        $entities_id ??= self::curEntity();
+
+        $users = [];
+        foreach ($DB->request([
+            'SELECT'   => ['users_id'],
+            'FROM'     => XPTransaction::$table,
+            'WHERE'    => ['entities_id' => $entities_id],
+            'GROUPBY'  => ['users_id'],
+        ]) as $row) {
+            $users[] = (int) $row['users_id'];
+        }
+
+        foreach ($users as $users_id) {
+            self::recalculate($users_id, $entities_id);
+        }
+
+        return count($users);
+    }
+
     public static function getTopUsers(int $limit = 10, ?int $groups_id = null, ?int $entities_id = null): array
     {
         global $DB;
