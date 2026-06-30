@@ -32,6 +32,8 @@ class EventListener
 
             // Ticket Solved (status 5)
             if ($new_status == Ticket::SOLVED || $new_status == Ticket::CLOSED) {
+                $tto_breached = false; // set true if SLA de atendimento deadline was missed
+
                 // Basic Ticket Resolved
                 if ($rule = Rule::getRuleForEvent('ticket_resolved')) {
                     if (!self::alreadyAwarded($users_id, 'ticket_resolved', 'Ticket', $ticket->fields['id'])) {
@@ -42,7 +44,9 @@ class EventListener
                 // FCR Check
                 $fcr_max = (int)Config::getConfig('fcr_max_minutes') ?: 60;
                 $date_created = strtotime($ticket->fields['date']);
-                $date_solved = strtotime($ticket->fields['solvedate'] ?? date('Y-m-d H:i:s'));
+                $date_solved = !empty($ticket->fields['solvedate'])
+                    ? strtotime($ticket->fields['solvedate'])
+                    : strtotime($_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s'));
                 $minutes_taken = ($date_solved - $date_created) / 60;
 
                 if ($minutes_taken <= $fcr_max && !self::wasEscalated($ticket->fields['id'])) {
@@ -53,27 +57,59 @@ class EventListener
                     }
                 }
 
-                // SLA Check
+                // SLA de Solução (time_to_resolve)
                 if (!empty($ticket->fields['time_to_resolve'])) {
                     $ttr = strtotime($ticket->fields['time_to_resolve']);
                     if ($date_solved <= $ttr) {
                         if ($rule = Rule::getRuleForEvent('sla_met')) {
                             if (!self::alreadyAwarded($users_id, 'sla_met', 'Ticket', $ticket->fields['id'])) {
-                                Score::addXP($users_id, $rule['xp_value'], 'sla_met', 'Ticket', $ticket->fields['id'], sprintf(__('SLA cumprido no Ticket %d', 'gamification'), $ticket->fields['id']), $entities_id);
+                                Score::addXP($users_id, $rule['xp_value'], 'sla_met', 'Ticket', $ticket->fields['id'], sprintf(__('SLA de solução cumprido no Ticket %d', 'gamification'), $ticket->fields['id']), $entities_id);
                             }
                         }
                     }
                 }
 
-                // Streak update (handled in Score::addXP implicitly or explicitly)
-                $score = Score::getOrCreate($users_id, $entities_id);
-                $new_streak = $score['current_streak'] + 1;
-                $best_streak = max($score['best_streak'], $new_streak);
-                global $DB;
-                $DB->update(Score::$table, [
-                    'current_streak' => $new_streak,
-                    'best_streak'    => $best_streak
-                ], ['users_id' => $users_id, 'entities_id' => $entities_id]);
+                // SLA de Atendimento (time_to_own / first response) — met OR breached
+                if (!empty($ticket->fields['time_to_own'])) {
+                    $tto  = strtotime($ticket->fields['time_to_own']);
+                    $tacd = !empty($ticket->fields['takeintoaccountdate'])
+                            ? strtotime($ticket->fields['takeintoaccountdate'])
+                            : null;
+
+                    if ($tacd !== null && $tacd <= $tto) {
+                        // Cumprido
+                        if ($rule = Rule::getRuleForEvent('sla_tto_met')) {
+                            if (!self::alreadyAwarded($users_id, 'sla_tto_met', 'Ticket', $ticket->fields['id'])) {
+                                Score::addXP($users_id, $rule['xp_value'], 'sla_tto_met', 'Ticket', $ticket->fields['id'], sprintf(__('SLA de atendimento cumprido no Ticket %d', 'gamification'), $ticket->fields['id']), $entities_id);
+                            }
+                        }
+                    } else {
+                        // Estourado (resposta tardia ou ticket nunca atendido dentro do prazo)
+                        $tto_breached = true;
+                        if (!self::alreadyAwarded($users_id, 'sla_tto_breached', 'Ticket', $ticket->fields['id'])) {
+                            $penalty = 0;
+                            if (Config::getConfig('enable_penalties')) {
+                                $rule = Rule::getRuleForEvent('sla_tto_breached');
+                                if ($rule) {
+                                    $penalty = abs((int) $rule['xp_value']);
+                                }
+                            }
+                            Score::removeXP($users_id, $penalty, 'sla_tto_breached', 'Ticket', $ticket->fields['id'], sprintf(__('SLA de atendimento estourado no Ticket %d', 'gamification'), $ticket->fields['id']), $entities_id);
+                        }
+                    }
+                }
+
+                // Streak: não incrementa quando o SLA de atendimento foi estourado
+                if (!$tto_breached) {
+                    $score = Score::getOrCreate($users_id, $entities_id);
+                    $new_streak = $score['current_streak'] + 1;
+                    $best_streak = max($score['best_streak'], $new_streak);
+                    global $DB;
+                    $DB->update(Score::$table, [
+                        'current_streak' => $new_streak,
+                        'best_streak'    => $best_streak
+                    ], ['users_id' => $users_id, 'entities_id' => $entities_id]);
+                }
 
             } 
             // Ticket Reopened (from SOLVED/CLOSED to anything else like INCOMING)
@@ -114,22 +150,42 @@ class EventListener
             return;
         }
         $entities_id = 0;
+        $tickets_id  = (int) $satisfaction->fields['tickets_id'];
+        $rating      = (int) $satisfaction->fields['satisfaction'];
 
-        $rating = (int)$satisfaction->fields['satisfaction'];
+        // Prevent double XP when a rating is updated (e.g. 4★ → 5★ fires onSatisfactionUpdated).
+        // First satisfaction event per ticket per tech wins; subsequent updates are ignored.
+        if (self::alreadyAwardedSatisfaction($users_id, $tickets_id)) {
+            return;
+        }
 
         if ($rating === 5) {
             if ($rule = Rule::getRuleForEvent('satisfaction_max')) {
-                if (!self::alreadyAwarded($users_id, 'satisfaction_max', 'Ticket', $satisfaction->fields['tickets_id'])) {
-                    Score::addXP($users_id, $rule['xp_value'], 'satisfaction_max', 'Ticket', $satisfaction->fields['tickets_id'], sprintf(__('Satisfação 5 estrelas no Ticket %d', 'gamification'), $satisfaction->fields['tickets_id']), $entities_id);
-                }
+                Score::addXP($users_id, $rule['xp_value'], 'satisfaction_max', 'Ticket', $tickets_id,
+                    sprintf(__('Satisfação 5 estrelas no Ticket %d', 'gamification'), $tickets_id), $entities_id);
             }
         } elseif ($rating === 4) {
             if ($rule = Rule::getRuleForEvent('satisfaction_good')) {
-                if (!self::alreadyAwarded($users_id, 'satisfaction_good', 'Ticket', $satisfaction->fields['tickets_id'])) {
-                    Score::addXP($users_id, $rule['xp_value'], 'satisfaction_good', 'Ticket', $satisfaction->fields['tickets_id'], sprintf(__('Satisfação 4 estrelas no Ticket %d', 'gamification'), $satisfaction->fields['tickets_id']), $entities_id);
-                }
+                Score::addXP($users_id, $rule['xp_value'], 'satisfaction_good', 'Ticket', $tickets_id,
+                    sprintf(__('Satisfação 4 estrelas no Ticket %d', 'gamification'), $tickets_id), $entities_id);
             }
         }
+    }
+
+    private static function alreadyAwardedSatisfaction(int $users_id, int $tickets_id): bool
+    {
+        global $DB;
+        $row = $DB->request([
+            'COUNT' => 'cnt',
+            'FROM'  => 'glpi_plugin_gamification_xptransactions',
+            'WHERE' => [
+                'users_id'        => $users_id,
+                'source_itemtype' => 'Ticket',
+                'source_items_id' => $tickets_id,
+                'event_type'      => ['satisfaction_max', 'satisfaction_good'],
+            ],
+        ])->current();
+        return ((int) ($row['cnt'] ?? 0)) > 0;
     }
 
     private static function getTicketEntity(int $tickets_id): int
@@ -158,7 +214,7 @@ class EventListener
         }
     }
 
-    private static function getAssignedTechnician(int $tickets_id): ?int
+    public static function getAssignedTechnician(int $tickets_id): ?int
     {
         global $DB;
 
@@ -218,7 +274,7 @@ class EventListener
             : null;
     }
 
-    private static function alreadyAwarded(int $users_id, string $event_type, string $itemtype, int $items_id): bool
+    public static function alreadyAwarded(int $users_id, string $event_type, string $itemtype, int $items_id): bool
     {
         global $DB;
         $count = countElementsInTable('glpi_plugin_gamification_xptransactions', [

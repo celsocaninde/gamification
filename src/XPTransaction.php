@@ -100,6 +100,19 @@ class XPTransaction extends CommonDBTM
         return $transactions;
     }
 
+    public static function getForUserByEvent(int $users_id, string $event_type, ?int $entities_id = null, int $limit = 200): array
+    {
+        global $DB;
+        $entities_id ??= Score::curEntity();
+        $iterator = $DB->request([
+            'FROM'  => self::$table,
+            'WHERE' => ['users_id' => $users_id, 'entities_id' => $entities_id, 'event_type' => $event_type],
+            'ORDER' => 'date_creation DESC',
+            'LIMIT' => $limit,
+        ]);
+        return iterator_to_array($iterator);
+    }
+
     public function rawSearchOptions(): array
     {
         $tab = [];

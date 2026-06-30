@@ -9,6 +9,8 @@
   --gx-violet:      #6d5bff;
   --gx-violet-700:  #5847e0;
   --gx-cyan:        #22d3ee;
+  --gx-teal:        #14b8a6;
+  --gx-red:         #ef4444;
   --gx-gold:        #ffb020;
   --gx-green:       #19c37d;
   --gx-ember:       #ff5470;
@@ -225,6 +227,8 @@
 .gx-stat-lbl { font-size: .78rem; color: var(--gx-muted); margin-top: .15rem; }
 .gx-stat--violet { --gx-accent: var(--gx-violet); }
 .gx-stat--cyan   { --gx-accent: var(--gx-cyan); }
+.gx-stat--teal   { --gx-accent: var(--gx-teal); }
+.gx-stat--red    { --gx-accent: var(--gx-red); }
 .gx-stat--gold   { --gx-accent: var(--gx-gold); }
 .gx-stat--green  { --gx-accent: var(--gx-green); }
 .gx-stat--ember  { --gx-accent: var(--gx-ember); }

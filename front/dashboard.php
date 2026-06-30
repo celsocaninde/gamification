@@ -96,19 +96,21 @@ $search_url = static function (string $path, array $criteria) use ($root): strin
     return $root . $path . '?' . http_build_query($params);
 };
 
-// Ticket: 5=Técnico atribuído, 12=Status, 62=Satisfação. KnowbaseItem: 70=Usuário (autor).
-$url_resolved = $search_url('/front/ticket.php', [[5, 'equals', $users_id], [12, 'equals', 'old']]);
-$url_sat5     = $search_url('/front/ticket.php', [[5, 'equals', $users_id], [62, 'equals', 5]]);
-$url_kb       = $search_url('/front/knowbaseitem.php', [[70, 'equals', $users_id]]);
-$url_badges   = 'badges.php';
+// Gamification history links (mostram exatamente os itens que geraram XP)
+$hist = static fn(string $event): string => 'history.php?event=' . $event;
+// GLPI native links para itens sem event_type próprio
+$url_sat5 = $search_url('/front/ticket.php', [[5, 'equals', $users_id], [62, 'equals', 5]]);
+$url_kb   = $search_url('/front/knowbaseitem.php', [[70, 'equals', $users_id]]);
 
 $tiles = [
-    ['ti-ticket',       __('Tickets resolvidos', 'gamification'), $score['tickets_resolved'],    'violet', $url_resolved],
-    ['ti-rocket',       __('FCR (1º contato)', 'gamification'),    $score['fcr_count'],           'cyan',   $url_resolved],
-    ['ti-clock-check',  __('SLA cumprido', 'gamification'),        $score['sla_met_count'],       'green',  $url_resolved],
-    ['ti-star-filled',  __('Avaliações 5★', 'gamification'),       $score['perfect_satisfaction'],'gold',   $url_sat5],
-    ['ti-book',         __('Artigos KB', 'gamification'),          $score['kb_articles'],         'slate',  $url_kb],
-    ['ti-medal-2',      __('Conquistas', 'gamification'),          count($badges),                'ember',  $url_badges],
+    ['ti-ticket',       __('Tickets resolvidos', 'gamification'),  $score['tickets_resolved'],            'violet', $hist('ticket_resolved')],
+    ['ti-rocket',       __('FCR (1º contato)', 'gamification'),    $score['fcr_count'],                   'cyan',   $hist('ticket_resolved_fcr')],
+    ['ti-clock-check',  __('SLA Solução', 'gamification'),         $score['sla_met_count'],               'green',  $hist('sla_met')],
+    ['ti-clock-bolt',   __('SLA Atendimento', 'gamification'),     $score['sla_tto_count'] ?? 0,          'teal',   $hist('sla_tto_met')],
+    ['ti-clock-x',      __('Estouro Atendimento', 'gamification'), $score['sla_tto_breach_count'] ?? 0,  'red',    $hist('sla_tto_breached')],
+    ['ti-star-filled',  __('Avaliações 5★', 'gamification'),       $score['perfect_satisfaction'],        'gold',   $url_sat5],
+    ['ti-book',         __('Artigos KB', 'gamification'),          $score['kb_articles'],                 'slate',  $url_kb],
+    ['ti-medal-2',      __('Conquistas', 'gamification'),          count($badges),                        'ember',  'badges.php'],
 ];
 echo "<div class='gx-stats mb-4'>";
 foreach ($tiles as [$ico, $lbl, $val, $accent, $href]) {

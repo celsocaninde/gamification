@@ -137,9 +137,14 @@ class Menu extends CommonGLPI
                 'icon'  => 'ti ti-settings',
             ];
             $menu['options']['recalculate'] = [
-                'title' => __('Recalcular Pontuações', 'gamification'),
+                'title' => __('Sincronizar Contadores', 'gamification'),
                 'page'  => Plugin::getWebDir('gamification') . '/front/recalculate.php',
                 'icon'  => 'ti ti-refresh',
+            ];
+            $menu['options']['seedtest'] = [
+                'title' => __('Dados de Teste', 'gamification'),
+                'page'  => Plugin::getWebDir('gamification') . '/front/seedtest.php',
+                'icon'  => 'ti ti-flask',
             ];
         }
 

@@ -31,7 +31,7 @@ foreach ($DB->request([
         'notified' => 0,
         'OR'       => [
             ['xp_amount'  => ['>', 0]],
-            ['event_type' => ['level_up', 'badge_earned']],
+            ['event_type' => ['level_up', 'badge_earned', 'sla_tto_breached', 'ticket_reopened']],
         ],
     ],
     'ORDER' => 'id DESC',
@@ -66,14 +66,43 @@ foreach (array_reverse($rows) as $r) {
                 'accent' => 'gold',
             ];
             break;
-        default:
+        case 'sla_tto_breached':
             $out[] = [
-                'kind'   => 'xp',
-                'title'  => '+' . (int) $r['xp_amount'] . ' XP',
+                'kind'   => 'penalty',
+                'title'  => __('SLA de Atendimento Estourado', 'gamification'),
                 'text'   => (string) $r['description'],
-                'icon'   => 'ti-bolt',
-                'accent' => 'cyan',
+                'icon'   => 'ti-clock-x',
+                'accent' => 'red',
             ];
+            break;
+        case 'ticket_reopened':
+            $out[] = [
+                'kind'   => 'penalty',
+                'title'  => __('Ticket Reaberto', 'gamification'),
+                'text'   => (string) $r['description'],
+                'icon'   => 'ti-rotate',
+                'accent' => 'ember',
+            ];
+            break;
+        default:
+            $amt = (int) $r['xp_amount'];
+            if ($amt < 0) {
+                $out[] = [
+                    'kind'   => 'penalty',
+                    'title'  => $amt . ' XP',
+                    'text'   => (string) $r['description'],
+                    'icon'   => 'ti-minus',
+                    'accent' => 'ember',
+                ];
+            } else {
+                $out[] = [
+                    'kind'   => 'xp',
+                    'title'  => '+' . $amt . ' XP',
+                    'text'   => (string) $r['description'],
+                    'icon'   => 'ti-bolt',
+                    'accent' => 'cyan',
+                ];
+            }
     }
 }
 

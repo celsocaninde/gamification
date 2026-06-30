@@ -93,6 +93,8 @@ class Score extends CommonDBTM
             $updates['fcr_count'] = $score['fcr_count'] + 1;
         } elseif ($event_type === 'sla_met') {
             $updates['sla_met_count'] = $score['sla_met_count'] + 1;
+        } elseif ($event_type === 'sla_tto_met') {
+            $updates['sla_tto_count'] = ($score['sla_tto_count'] ?? 0) + 1;
         } elseif ($event_type === 'satisfaction_max') {
             $updates['perfect_satisfaction'] = $score['perfect_satisfaction'] + 1;
         } elseif ($event_type === 'kb_article_created') {
@@ -116,6 +118,60 @@ class Score extends CommonDBTM
         }
     }
 
+    /**
+     * Sync the denormalized counter columns (tickets_resolved, fcr_count, etc.)
+     * from the authoritative XP transaction log. Safe to call multiple times.
+     * Fixes counters stuck at 0 when addXP ran but the UPDATE was skipped due
+     * to missing columns on an older install.
+     */
+    public static function recalculate(int $users_id, ?int $entities_id = null): void
+    {
+        global $DB;
+        $entities_id ??= self::curEntity();
+
+        $event_map = [
+            'ticket_resolved'     => 'tickets_resolved',
+            'ticket_resolved_fcr' => 'fcr_count',
+            'sla_met'             => 'sla_met_count',
+            'sla_tto_met'         => 'sla_tto_count',
+            'sla_tto_breached'    => 'sla_tto_breach_count',
+            'satisfaction_max'    => 'perfect_satisfaction',
+            'kb_article_created'  => 'kb_articles',
+        ];
+
+        $updates = [];
+        foreach ($event_map as $event_type => $col) {
+            $updates[$col] = (int) countElementsInTable(
+                XPTransaction::$table,
+                ['users_id' => $users_id, 'entities_id' => $entities_id, 'event_type' => $event_type]
+            );
+        }
+
+        self::getOrCreate($users_id, $entities_id);
+        $DB->update(self::$table, $updates, ['users_id' => $users_id, 'entities_id' => $entities_id]);
+    }
+
+    /**
+     * Run recalculate() for every user that has at least one XP transaction.
+     * Returns the number of users processed.
+     */
+    public static function recalculateAll(): int
+    {
+        global $DB;
+        $iterator = $DB->request([
+            'SELECT'  => ['users_id', 'entities_id'],
+            'FROM'    => XPTransaction::$table,
+            'GROUPBY' => ['users_id', 'entities_id'],
+        ]);
+
+        $count = 0;
+        foreach ($iterator as $row) {
+            self::recalculate((int) $row['users_id'], (int) $row['entities_id']);
+            $count++;
+        }
+        return $count;
+    }
+
     public static function removeXP(int $users_id, int $amount, string $event_type, ?string $source_itemtype = null, ?int $source_items_id = null, string $description = '', ?int $entities_id = null): void
     {
         global $DB;
@@ -128,13 +184,19 @@ class Score extends CommonDBTM
 
         $new_level = self::calculateLevel($new_xp_total);
 
-        $DB->update(self::$table, [
+        $penalty_updates = [
             'xp_total'     => $new_xp_total,
             'xp_available' => $new_xp_available,
             'xp_season'    => $new_xp_season,
             'level'        => $new_level,
             'date_mod'     => $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s')
-        ], ['users_id' => $users_id, 'entities_id' => $entities_id]);
+        ];
+
+        if ($event_type === 'sla_tto_breached') {
+            $penalty_updates['sla_tto_breach_count'] = ($score['sla_tto_breach_count'] ?? 0) + 1;
+        }
+
+        $DB->update(self::$table, $penalty_updates, ['users_id' => $users_id, 'entities_id' => $entities_id]);
 
         XPTransaction::log($users_id, -$amount, $new_xp_available, $event_type, $source_itemtype, $source_items_id, $description, $entities_id);
 

@@ -19,8 +19,81 @@ class Cron extends CommonDBTM
                 return ['description' => __('Award XP for completed weekly quests', 'gamification')];
             case 'CheckBattlePass':
                 return ['description' => __('Award battle pass tier rewards', 'gamification')];
+            case 'CheckSLABreaches':
+                return ['description' => __('Detecta estouros de SLA de atendimento em chamados abertos', 'gamification')];
         }
         return [];
+    }
+
+    /**
+     * Scan open tickets whose time_to_own deadline has passed without being taken
+     * into account on time, and log the sla_tto_breached event (once per ticket
+     * per tech). Complements EventListener which only fires at resolution time.
+     */
+    public static function cronCheckSLABreaches(CronTask $task): int
+    {
+        global $DB;
+
+        $now = date('Y-m-d H:i:s');
+
+        // Fetch open tickets with a past TTO deadline.
+        // The PHP loop below filters out tickets that were taken into account on time.
+        $tickets_iter = $DB->request([
+            'SELECT' => ['id', 'entities_id', 'time_to_own', 'takeintoaccountdate'],
+            'FROM'   => 'glpi_tickets',
+            'WHERE'  => [
+                ['status'       => ['NOT IN', [Ticket::SOLVED, Ticket::CLOSED]]],
+                'is_deleted'    => 0,
+                ['NOT'          => ['time_to_own' => null]],
+                ['time_to_own'  => ['<', $now]],
+            ],
+        ]);
+
+        foreach ($tickets_iter as $ticket_row) {
+            $tickets_id  = (int) $ticket_row['id'];
+            $entities_id = (int) $ticket_row['entities_id'];
+
+            $tto  = strtotime($ticket_row['time_to_own']);
+            $tacd = !empty($ticket_row['takeintoaccountdate'])
+                    ? strtotime($ticket_row['takeintoaccountdate'])
+                    : null;
+
+            // Skip if taken into account within SLA
+            if ($tacd !== null && $tacd <= $tto) {
+                continue;
+            }
+
+            $users_id = EventListener::getAssignedTechnician($tickets_id);
+            if (!$users_id) {
+                continue;
+            }
+
+            if (EventListener::alreadyAwarded($users_id, 'sla_tto_breached', 'Ticket', $tickets_id)) {
+                continue;
+            }
+
+            $penalty = 0;
+            if (Config::getConfig('enable_penalties')) {
+                $rule = Rule::getRuleForEvent('sla_tto_breached');
+                if ($rule) {
+                    $penalty = abs((int) $rule['xp_value']);
+                }
+            }
+
+            Score::removeXP(
+                $users_id,
+                $penalty,
+                'sla_tto_breached',
+                'Ticket',
+                $tickets_id,
+                sprintf(__('SLA de atendimento estourado no Ticket %d', 'gamification'), $tickets_id),
+                $entities_id
+            );
+
+            $task->addVolume(1);
+        }
+
+        return 1;
     }
 
     /**

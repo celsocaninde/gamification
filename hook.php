@@ -608,11 +608,17 @@ function plugin_gamification_install(): bool
         'comment' => 'Concede recompensas de tiers do Battle Pass',
         'mode'    => \CronTask::MODE_EXTERNAL,
     ]);
+    \CronTask::register(\GlpiPlugin\Gamification\Cron::class, 'CheckSLABreaches', MINUTE_TIMESTAMP * 15, [
+        'comment' => 'Detecta estouros de SLA de atendimento em chamados abertos',
+        'mode'    => \CronTask::MODE_EXTERNAL,
+    ]);
 
     // Idempotent schema upgrade: add per-entity scoping to existing installs.
     plugin_gamification_ensure_entity_columns();
     plugin_gamification_ensure_notify_column();
     plugin_gamification_ensure_battlepass_tables();
+    plugin_gamification_ensure_counter_columns();
+    plugin_gamification_ensure_sla_tto_rule();
 
     return true;
 }
@@ -735,6 +741,70 @@ function plugin_gamification_uninstall(): bool
     \CronTask::unregister('gamification');
 
     return true;
+}
+
+/**
+ * Ensure the sla_tto_met rule exists (SLA de Atendimento / time_to_own).
+ * Inserted only when missing so re-running install never duplicates it.
+ */
+function plugin_gamification_ensure_sla_tto_rule(): void
+{
+    global $DB;
+    $t = 'glpi_plugin_gamification_rules';
+    if (!$DB->tableExists($t)) {
+        return;
+    }
+    if (countElementsInTable($t, ['event_type' => 'sla_tto_met']) === 0) {
+        $DB->insert($t, [
+            'name'        => 'SLA de Atendimento Cumprido',
+            'description' => 'Ticket atendido (tomado em conta) dentro do prazo do SLA de atendimento',
+            'event_type'  => 'sla_tto_met',
+            'xp_value'    => 15,
+            'is_active'   => 1,
+        ]);
+    }
+    if (countElementsInTable($t, ['event_type' => 'sla_tto_breached']) === 0) {
+        $DB->insert($t, [
+            'name'        => 'Penalidade: SLA de Atendimento Estourado',
+            'description' => 'Ticket não atendido dentro do prazo do SLA de atendimento',
+            'event_type'  => 'sla_tto_breached',
+            'xp_value'    => -10,
+            'is_active'   => 1,
+        ]);
+    }
+}
+
+/**
+ * Idempotently add the stat-counter columns to glpi_plugin_gamification_scores.
+ * These columns may be missing on installs that predate their addition. The
+ * UPDATE in Score::addXP silently fails when a column doesn't exist, so the
+ * counters stay at 0 forever without this migration.
+ */
+function plugin_gamification_ensure_counter_columns(): void
+{
+    global $DB;
+    $t = 'glpi_plugin_gamification_scores';
+    if (!$DB->tableExists($t)) {
+        return;
+    }
+
+    $cols = [
+        'tickets_resolved'     => "INT NOT NULL DEFAULT 0",
+        'fcr_count'            => "INT NOT NULL DEFAULT 0",
+        'sla_met_count'        => "INT NOT NULL DEFAULT 0",
+        'sla_tto_count'        => "INT NOT NULL DEFAULT 0",
+        'sla_tto_breach_count' => "INT NOT NULL DEFAULT 0",
+        'perfect_satisfaction' => "INT NOT NULL DEFAULT 0",
+        'kb_articles'          => "INT NOT NULL DEFAULT 0",
+        'current_streak'       => "INT NOT NULL DEFAULT 0",
+        'best_streak'          => "INT NOT NULL DEFAULT 0",
+    ];
+
+    foreach ($cols as $col => $def) {
+        if (!$DB->fieldExists($t, $col)) {
+            $DB->doQuery("ALTER TABLE `$t` ADD COLUMN `$col` $def");
+        }
+    }
 }
 
 /**
