@@ -6,7 +6,6 @@ use CommonDBTM;
 use CommonGLPI;
 use Profile as CoreProfile;
 use ProfileRight;
-use Html;
 use Session;
 
 class Profile extends CommonDBTM
@@ -61,16 +60,17 @@ class Profile extends CommonDBTM
         $rights      = self::getRightsForProfile($profiles_id);
         $can_edit    = Session::haveRight('profile', UPDATE);
         $defs        = self::rightDefinitions();
+        $action      = \Plugin::getWebDir('gamification') . '/front/profileright.form.php';
+        $csrf        = Session::getNewCSRFToken();
 
         echo "<div class='gamification-wrapper'>";
-        echo "<div class='gx-card gx-card-pad gx-rights-card'>";
-
-        if ($can_edit) {
-            $action = \Plugin::getWebDir('gamification') . '/front/profileright.form.php';
-            echo "<form method='post' action='" . htmlspecialchars($action) . "'>";
-            echo Html::hidden('id', ['value' => $profiles_id]);
-            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
-        }
+        // IMPORTANTE: nao usar <form> aqui. Esta aba e renderizada dentro do
+        // formulario principal do perfil; um <form> aninhado e descartado pelo
+        // navegador e o salvamento se perde. Salvamos via fetch() (ver script).
+        echo "<div class='gx-card gx-card-pad gx-rights-card' id='gx-rights-card'"
+           . " data-action='" . htmlspecialchars($action) . "'"
+           . " data-csrf='" . htmlspecialchars($csrf) . "'"
+           . " data-profile='" . $profiles_id . "'>";
 
         // Header
         echo "<div class='gx-rights-head'>";
@@ -96,10 +96,8 @@ class Profile extends CommonDBTM
             echo "</div>";
 
             if ($can_edit) {
-                // hidden 0 + checkbox share the name → unchecked posts 0, checked posts the set value.
-                echo "<input type='hidden' name='_plugin_gamification_rights[{$right_name}]' value='0'>";
                 echo "<label class='gx-switch' title='" . htmlspecialchars($label) . "'>";
-                echo "<input type='checkbox' name='_plugin_gamification_rights[{$right_name}]' value='{$set_val}' {$checked}>";
+                echo "<input type='checkbox' class='gx-right-check' data-right='" . htmlspecialchars($right_name) . "' data-setval='{$set_val}' {$checked}>";
                 echo "<span class='gx-switch-track'></span>";
                 echo "</label>";
             } else {
@@ -112,18 +110,75 @@ class Profile extends CommonDBTM
         echo "</div>"; // .gx-rights
 
         if ($can_edit) {
-            echo "<div class='gx-rights-foot'>";
-            echo "<button type='submit' name='_update_gamification_rights' class='btn btn-primary px-4'>";
+            echo "<div class='gx-rights-foot' style='display:flex;align-items:center;gap:.75rem'>";
+            echo "<button type='button' id='gx-rights-save' class='btn btn-primary px-4'>";
             echo "<i class='ti ti-device-floppy me-1'></i>" . __('Salvar', 'gamification');
             echo "</button>";
+            echo "<span id='gx-rights-msg' style='font-size:13px'></span>";
             echo "</div>";
-            echo "</form>";
+            self::renderRightsScript();
         }
 
         echo "</div>"; // .gx-rights-card
         echo "</div>"; // .gamification-wrapper
 
         return true;
+    }
+
+    /**
+     * Script que salva os direitos via fetch() — contorna o problema de <form>
+     * aninhado dentro do formulario do perfil e atualiza sem recarregar.
+     */
+    private static function renderRightsScript(): void
+    {
+        $okMsg   = __('Permissões salvas', 'gamification');
+        $errMsg  = __('Falha ao salvar permissões', 'gamification');
+        echo <<<HTML
+<script>
+(function () {
+   const card = document.getElementById('gx-rights-card');
+   const btn  = document.getElementById('gx-rights-save');
+   const msg  = document.getElementById('gx-rights-msg');
+   if (!card || !btn) { return; }
+
+   btn.addEventListener('click', function () {
+      const data = new FormData();
+      data.set('_update_gamification_rights', '1');
+      data.set('ajax', '1');
+      data.set('id', card.dataset.profile);
+      data.set('_glpi_csrf_token', card.dataset.csrf);
+
+      card.querySelectorAll('.gx-right-check').forEach(function (cb) {
+         data.set('_plugin_gamification_rights[' + cb.dataset.right + ']', cb.checked ? cb.dataset.setval : '0');
+      });
+
+      btn.disabled = true;
+      msg.textContent = '...';
+      msg.style.color = '';
+
+      fetch(card.dataset.action, {
+         method: 'POST',
+         body: data,
+         credentials: 'same-origin',
+         headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-Glpi-Csrf-Token': card.dataset.csrf }
+      })
+      .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+      .then(function (p) {
+         const ok = p && p.ok !== false;
+         msg.textContent = ok ? '$okMsg' : ('$errMsg' + (p && p.message ? ': ' + p.message : ''));
+         msg.style.color = ok ? '#2b7a0b' : '#b5179e';
+         // token CSRF e de uso unico: atualiza para um proximo salvar, se vier no payload
+         if (p && p.csrf) { card.dataset.csrf = p.csrf; }
+      })
+      .catch(function () {
+         msg.textContent = '$errMsg';
+         msg.style.color = '#b5179e';
+      })
+      .finally(function () { btn.disabled = false; });
+   });
+})();
+</script>
+HTML;
     }
 
     /**
