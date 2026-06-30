@@ -21,8 +21,34 @@ class Cron extends CommonDBTM
                 return ['description' => __('Award battle pass tier rewards', 'gamification')];
             case 'CheckSLABreaches':
                 return ['description' => __('Detecta estouros de SLA de atendimento em chamados abertos', 'gamification')];
+            case 'ImportHistorical':
+                return ['description' => __('Importa XP retroativo de tickets/satisfação/KB em lotes (quando ativado)', 'gamification')];
         }
         return [];
+    }
+
+    /**
+     * Process the historical XP import in batches, but only while an import is
+     * active (started from the maintenance page). Idle otherwise.
+     */
+    public static function cronImportHistorical(CronTask $task): int
+    {
+        if (!HistoricalImporter::isRunning()) {
+            return 0; // nada a fazer
+        }
+
+        @set_time_limit(0);
+
+        // Processa varios lotes por execucao, parando ao concluir.
+        for ($i = 0; $i < 20; $i++) {
+            $r = HistoricalImporter::runBatch();
+            $task->addVolume($r['processed']);
+            if ($r['done'] || $r['processed'] === 0) {
+                break;
+            }
+        }
+
+        return 1;
     }
 
     /**

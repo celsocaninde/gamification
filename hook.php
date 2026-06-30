@@ -612,6 +612,10 @@ function plugin_gamification_install(): bool
         'comment' => 'Detecta estouros de SLA de atendimento em chamados abertos',
         'mode'    => \CronTask::MODE_EXTERNAL,
     ]);
+    \CronTask::register(\GlpiPlugin\Gamification\Cron::class, 'ImportHistorical', MINUTE_TIMESTAMP * 5, [
+        'comment' => 'Importa XP retroativo em lotes enquanto a importação estiver ativa',
+        'mode'    => \CronTask::MODE_EXTERNAL,
+    ]);
 
     // Idempotent schema upgrade: add per-entity scoping to existing installs.
     plugin_gamification_ensure_entity_columns();
