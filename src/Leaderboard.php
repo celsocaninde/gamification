@@ -106,12 +106,22 @@ class Leaderboard extends CommonDBTM
 
         $qn = fn(string $n): string => $DB->quoteName($n);
 
+        // Correlated subquery: distinct badges earned by any member of the group.
+        // Done as a subquery (not a JOIN) so it doesn't fan out the SUM(xp_earned) above.
+        $badges_count_expr = new \Glpi\DBAL\QueryExpression(
+            '(SELECT COUNT(DISTINCT `bu`.`badges_id`) FROM `glpi_plugin_gamification_badgeusers` `bu` '
+            . 'INNER JOIN `glpi_groups_users` `bgu` ON `bgu`.`users_id` = `bu`.`users_id` '
+            . 'WHERE `bgu`.`groups_id` = `glpi_groups`.`id` AND `bu`.`entities_id` = ' . (int) $entities_id
+            . ') AS ' . $qn('badges_count')
+        );
+
         $iterator = $DB->request([
             'SELECT' => [
                 new \Glpi\DBAL\QueryExpression($qn('glpi_groups.id') . ' AS ' . $qn('groups_id')),
                 new \Glpi\DBAL\QueryExpression($qn('glpi_groups.name') . ' AS ' . $qn('group_name')),
                 new \Glpi\DBAL\QueryExpression('SUM(' . $qn(self::$table . '.xp_earned') . ') AS ' . $qn('total_xp')),
                 new \Glpi\DBAL\QueryExpression('COUNT(DISTINCT ' . $qn(self::$table . '.users_id') . ') AS ' . $qn('members')),
+                $badges_count_expr,
             ],
             'FROM'       => self::$table,
             'INNER JOIN' => [
@@ -134,9 +144,55 @@ class Leaderboard extends CommonDBTM
         $rank = 1;
         foreach ($iterator as $row) {
             $row['dynamic_rank'] = $rank++;
+            // Group level: same level curve as individual users, fed by the group's summed XP.
+            $row['level'] = Score::calculateLevel((int) $row['total_xp']);
             $rows[] = $row;
         }
         return $rows;
+    }
+
+    /**
+     * Distinct badges earned by any member of a group (union, not duplicated per member).
+     *
+     * @return array<int,array> rows with id, name, icon, icon_color, rarity, earners (how many members earned it)
+     */
+    public static function getTeamBadges(int $groups_id, ?int $entities_id = null, int $limit = 12): array
+    {
+        global $DB;
+        $entities_id ??= Score::curEntity();
+
+        $iterator = $DB->request([
+            'SELECT' => [
+                'glpi_plugin_gamification_badges.id',
+                'glpi_plugin_gamification_badges.name',
+                'glpi_plugin_gamification_badges.icon',
+                'glpi_plugin_gamification_badges.icon_color',
+                'glpi_plugin_gamification_badges.rarity',
+                new \Glpi\DBAL\QueryExpression('COUNT(DISTINCT `glpi_plugin_gamification_badgeusers`.`users_id`) AS `earners`'),
+            ],
+            'FROM'       => 'glpi_plugin_gamification_badgeusers',
+            'INNER JOIN' => [
+                'glpi_groups_users' => [
+                    'ON' => ['glpi_groups_users' => 'users_id', 'glpi_plugin_gamification_badgeusers' => 'users_id'],
+                ],
+                'glpi_plugin_gamification_badges' => [
+                    'ON' => ['glpi_plugin_gamification_badges' => 'id', 'glpi_plugin_gamification_badgeusers' => 'badges_id'],
+                ],
+            ],
+            'WHERE'   => [
+                'glpi_groups_users.groups_id'                => $groups_id,
+                'glpi_plugin_gamification_badgeusers.entities_id' => $entities_id,
+            ],
+            'GROUPBY' => ['glpi_plugin_gamification_badges.id'],
+            'ORDER'   => 'earners DESC',
+            'LIMIT'   => $limit,
+        ]);
+
+        $badges = [];
+        foreach ($iterator as $row) {
+            $badges[] = $row;
+        }
+        return $badges;
     }
 
     public static function updateEntry(int $users_id, int $xp_amount, int $seasons_id, ?int $entities_id = null): void

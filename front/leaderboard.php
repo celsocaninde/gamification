@@ -72,20 +72,44 @@ if ($view === 'teams') {
     echo "<div class='gx-card gx-card-pad'>";
     echo "<h2 class='h5 mb-3'><i class='ti ti-trophy me-2 text-warning'></i>" . __('Ranking de equipes', 'gamification') . "</h2>";
     echo "<div class='table-responsive'><table class='gx-board'>";
-    echo "<thead><tr><th style='width:70px'>" . __('Pos.', 'gamification') . "</th><th>" . __('Equipe', 'gamification') . "</th><th class='text-center'>" . __('Membros', 'gamification') . "</th><th class='text-end'>" . __('XP Total', 'gamification') . "</th></tr></thead><tbody>";
+    echo "<thead><tr>";
+    echo "<th style='width:70px'>" . __('Pos.', 'gamification') . "</th>";
+    echo "<th>" . __('Equipe', 'gamification') . "</th>";
+    echo "<th class='text-center'>" . __('Membros', 'gamification') . "</th>";
+    echo "<th class='text-center'>" . __('Nível', 'gamification') . "</th>";
+    echo "<th class='text-center'>" . __('Conquistas', 'gamification') . "</th>";
+    echo "<th class='text-end'>" . __('XP Total', 'gamification') . "</th>";
+    echo "</tr></thead><tbody>";
     foreach ($teams as $t) {
         $r    = (int) $t['dynamic_rank'];
         $tier = $r <= 3 ? "tier-{$r}" : '';
         $rankcell = $r <= 3
             ? "<i class='ti ti-medal-2' style='font-size:1.5rem;color:var(--tier)'></i>"
             : "<span class='gx-rank-pill'>{$r}</span>";
+
+        $team_badges = Leaderboard::getTeamBadges((int) $t['groups_id'], null, 6);
+
         echo "<tr class='{$tier}'>";
         echo "<td>{$rankcell}</td>";
         echo "<td><div class='d-flex align-items-center gap-3'>";
         echo "<span class='gx-ava {$tier}'><i class='ti ti-users-group'></i></span>";
+        echo "<div>";
         echo "<div class='fw-bold'>" . htmlspecialchars((string) $t['group_name']) . "</div>";
+        if (!empty($team_badges)) {
+            echo "<div class='d-flex gap-1 mt-1'>";
+            foreach ($team_badges as $b) {
+                $title = htmlspecialchars($b['name'] . ' (' . $b['earners'] . ')', ENT_QUOTES);
+                $color = htmlspecialchars((string) $b['icon_color'], ENT_QUOTES);
+                $icon  = htmlspecialchars((string) $b['icon'], ENT_QUOTES);
+                echo "<i class='ti {$icon}' title='{$title}' style='color:{$color};font-size:1.1rem'></i>";
+            }
+            echo "</div>";
+        }
+        echo "</div>";
         echo "</div></td>";
         echo "<td class='text-center'>" . (int) $t['members'] . "</td>";
+        echo "<td class='text-center'><span class='badge bg-secondary-subtle text-secondary-emphasis px-3 py-2'>" . __('Nv', 'gamification') . " {$t['level']}</span></td>";
+        echo "<td class='text-center'><i class='ti ti-medal text-warning me-1'></i>" . (int) $t['badges_count'] . "</td>";
         echo "<td class='text-end'><span class='gx-num fs-5 text-success'>" . number_format((int) $t['total_xp'], 0, ',', '.') . "</span> <span class='small text-muted'>XP</span></td>";
         echo "</tr>";
     }

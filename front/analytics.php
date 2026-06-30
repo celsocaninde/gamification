@@ -19,6 +19,13 @@ $qn    = fn(string $n) => $DB->quoteName($n);
 
 $active = Season::getActiveSeason();
 
+// ── Filtro de grupo (afeta KPIs, tendência de XP e tabelas abaixo) ───────────
+$groups_id = !empty($_GET['groups_id']) ? (int) $_GET['groups_id'] : null;
+
+// JOIN/WHERE reutilizável para escopar qualquer query "por users_id" a um grupo.
+$group_join  = $groups_id ? ['glpi_groups_users' => ['ON' => ['glpi_groups_users' => 'users_id', Score::$table => 'users_id']]] : [];
+$group_where = $groups_id ? ['glpi_groups_users.groups_id' => $groups_id] : [];
+
 // ── KPIs ────────────────────────────────────────────────────────────────────
 $totals = $DB->request([
     'SELECT' => [
@@ -30,24 +37,37 @@ $totals = $DB->request([
         $qexpr('SUM(' . $qn('perfect_satisfaction') . ') AS ' . $qn('stars')),
         $qexpr('SUM(' . $qn('kb_articles') . ') AS ' . $qn('kb')),
     ],
-    'FROM' => Score::$table,
+    'FROM'      => Score::$table,
+    'LEFT JOIN' => $group_join,
+    'WHERE'     => $group_where,
 ])->current();
 
 $active_players = (int) $DB->request([
-    'SELECT' => [$qexpr('COUNT(*) AS ' . $qn('c'))],
-    'FROM'   => Score::$table,
-    'WHERE'  => ['xp_season' => ['>', 0]],
+    'SELECT'    => [$qexpr('COUNT(*) AS ' . $qn('c'))],
+    'FROM'      => Score::$table,
+    'LEFT JOIN' => $group_join,
+    'WHERE'     => array_merge(['xp_season' => ['>', 0]], $group_where),
 ])->current()['c'];
 
-$badges_awarded = countElementsInTable(BadgeUser::$table);
+if ($groups_id) {
+    $badges_awarded = (int) $DB->request([
+        'SELECT'    => [$qexpr('COUNT(*) AS ' . $qn('c'))],
+        'FROM'      => BadgeUser::$table,
+        'LEFT JOIN' => ['glpi_groups_users' => ['ON' => ['glpi_groups_users' => 'users_id', BadgeUser::$table => 'users_id']]],
+        'WHERE'     => $group_where,
+    ])->current()['c'];
+} else {
+    $badges_awarded = countElementsInTable(BadgeUser::$table);
+}
 
 // ── XP over the last 14 days (aggregated in PHP to keep the query portable) ──
 $since = date('Y-m-d 00:00:00', strtotime('-13 days'));
 $by_day = [];
 $iter = $DB->request([
-    'SELECT' => ['date_creation', 'xp_amount'],
-    'FROM'   => 'glpi_plugin_gamification_xptransactions',
-    'WHERE'  => ['date_creation' => ['>=', $since], 'xp_amount' => ['>', 0]],
+    'SELECT'    => ['date_creation', 'xp_amount'],
+    'FROM'      => 'glpi_plugin_gamification_xptransactions',
+    'LEFT JOIN' => $groups_id ? ['glpi_groups_users' => ['ON' => ['glpi_groups_users' => 'users_id', 'glpi_plugin_gamification_xptransactions' => 'users_id']]] : [],
+    'WHERE'     => array_merge(['date_creation' => ['>=', $since], 'xp_amount' => ['>', 0]], $group_where),
 ]);
 foreach ($iter as $r) {
     $day = substr((string) $r['date_creation'], 0, 10);
@@ -57,16 +77,17 @@ foreach ($iter as $r) {
 // ── Reopens per user ────────────────────────────────────────────────────────
 $reopens = [];
 $iter = $DB->request([
-    'SELECT'  => ['users_id', $qexpr('COUNT(*) AS ' . $qn('c'))],
-    'FROM'    => 'glpi_plugin_gamification_xptransactions',
-    'WHERE'   => ['event_type' => 'ticket_reopened'],
-    'GROUPBY' => ['users_id'],
+    'SELECT'    => ['users_id', $qexpr('COUNT(*) AS ' . $qn('c'))],
+    'FROM'      => 'glpi_plugin_gamification_xptransactions',
+    'LEFT JOIN' => $groups_id ? ['glpi_groups_users' => ['ON' => ['glpi_groups_users' => 'users_id', 'glpi_plugin_gamification_xptransactions' => 'users_id']]] : [],
+    'WHERE'     => array_merge(['event_type' => 'ticket_reopened'], $group_where),
+    'GROUPBY'   => ['users_id'],
 ]);
 foreach ($iter as $r) {
     $reopens[(int) $r['users_id']] = (int) $r['c'];
 }
 
-$techs = Score::getTopUsers(50);
+$techs = Score::getTopUsers(50, $groups_id);
 
 // ── Aderência (tempo para atender o chamado) ─────────────────────────────────
 // Período via querystring (?from=YYYY-MM-DD&to=YYYY-MM-DD); padrão = últimos 30 dias.
@@ -118,8 +139,8 @@ $eval_adh = static function (array $r) use ($safe_ts, $target_seconds): array {
     return ['taken' => $taken, 'delay' => $delay, 'breached' => $breached];
 };
 
-$adh_fields   = ['date', 'takeintoaccount_delay_stat', 'takeintoaccountdate', 'time_to_own'];
-$period_where = array_merge(
+$adh_fields        = ['date', 'takeintoaccount_delay_stat', 'takeintoaccountdate', 'time_to_own'];
+$period_where_base = array_merge(
     [
         'glpi_tickets.is_deleted' => 0,
         ['glpi_tickets.date' => ['>=', $from . ' 00:00:00']],
@@ -127,6 +148,27 @@ $period_where = array_merge(
     ],
     getEntitiesRestrictCriteria('glpi_tickets')
 );
+
+// Visão geral: sem JOIN de atores (evita contagem dupla), então o filtro de
+// grupo é aplicado via subquery — chamado entra se TEM algum atribuído do grupo.
+$period_where = $period_where_base;
+if ($groups_id) {
+    $period_where[] = [
+        'glpi_tickets.id' => ['IN', new \Glpi\DBAL\QuerySubQuery([
+            'SELECT'     => ['glpi_tickets_users.tickets_id'],
+            'FROM'       => 'glpi_tickets_users',
+            'INNER JOIN' => [
+                'glpi_groups_users' => [
+                    'ON' => ['glpi_groups_users' => 'users_id', 'glpi_tickets_users' => 'users_id'],
+                ],
+            ],
+            'WHERE'      => [
+                'glpi_tickets_users.type'     => \CommonITILActor::ASSIGN,
+                'glpi_groups_users.groups_id' => $groups_id,
+            ],
+        ])],
+    ];
+}
 
 // Visão geral (sem JOIN → evita contagem dupla em chamados com vários atribuídos).
 $adh = ['total' => 0, 'taken' => 0, 'sum' => 0, 'breached' => 0, 'pending' => 0];
@@ -151,21 +193,28 @@ foreach ($iter as $r) {
 $adh_avg     = $adh['taken'] > 0 ? (int) round($adh['sum'] / $adh['taken']) : null;
 $adh_rate    = $adh['total'] > 0 ? (int) round(max(0, $adh['total'] - $adh['breached']) / $adh['total'] * 100) : 0;
 
-// Por técnico atribuído.
+// Por técnico atribuído (escopado diretamente pelo grupo do atribuído, não pelo chamado).
+$tech_join = [
+    'glpi_tickets_users' => [
+        'ON' => [
+            'glpi_tickets_users' => 'tickets_id',
+            'glpi_tickets'       => 'id',
+            ['AND' => ['glpi_tickets_users.type' => \CommonITILActor::ASSIGN]],
+        ],
+    ],
+];
+if ($groups_id) {
+    $tech_join['glpi_groups_users'] = [
+        'ON' => ['glpi_groups_users' => 'users_id', 'glpi_tickets_users' => 'users_id'],
+    ];
+}
+
 $adh_by_user = [];
 $iter = $DB->request([
     'SELECT'     => array_merge(['glpi_tickets_users.users_id'], array_map(fn ($f) => 'glpi_tickets.' . $f, $adh_fields)),
     'FROM'       => 'glpi_tickets',
-    'INNER JOIN' => [
-        'glpi_tickets_users' => [
-            'ON' => [
-                'glpi_tickets_users' => 'tickets_id',
-                'glpi_tickets'       => 'id',
-                ['AND' => ['glpi_tickets_users.type' => \CommonITILActor::ASSIGN]],
-            ],
-        ],
-    ],
-    'WHERE'      => $period_where,
+    'INNER JOIN' => $tech_join,
+    'WHERE'      => array_merge($period_where_base, $groups_id ? ['glpi_groups_users.groups_id' => $groups_id] : []),
 ]);
 foreach ($iter as $r) {
     $uid = (int) $r['users_id'];
@@ -220,6 +269,21 @@ if ($active) {
 }
 echo "</div>";
 
+// ── Filtro de grupo (preserva o período de aderência já aplicado) ────────────
+echo "<div class='gx-card gx-card-pad mb-4'>";
+echo "<form method='get' action='" . Html::cleanInputText($_SERVER['PHP_SELF']) . "' class='row g-3 align-items-end'>";
+echo "<input type='hidden' name='from' value='" . Html::cleanInputText($from) . "'>";
+echo "<input type='hidden' name='to' value='" . Html::cleanInputText($to) . "'>";
+echo "<div class='col-md-5'>";
+echo "<label class='gx-eyebrow mb-1 d-block'>" . __('Grupo', 'gamification') . "</label>";
+\Dropdown::show('Group', ['name' => 'groups_id', 'value' => $groups_id, 'class' => 'form-select']);
+echo "</div>";
+echo "<div class='col-md-2'>";
+echo "<button type='submit' class='btn btn-primary w-100'><i class='ti ti-filter me-1'></i>" . __('Filtrar', 'gamification') . "</button>";
+echo "</div>";
+echo "</form>";
+echo "</div>";
+
 // ── KPI tiles ───────────────────────────────────────────────────────────────
 $kpis = [
     ['ti-users',        __('Jogadores ativos', 'gamification'), $active_players,                'violet'],
@@ -249,6 +313,7 @@ echo "<div class='d-flex align-items-end justify-content-between flex-wrap gap-3
 echo "<div><h2 class='h5 m-0'><i class='ti ti-clock-play me-2 text-primary'></i>" . __('Aderência — tempo para atender o chamado', 'gamification') . "</h2>";
 echo "<p class='text-muted small m-0'>" . __('Do momento em que o chamado é aberto (Novo) até o técnico iniciar o atendimento.', 'gamification') . "</p></div>";
 echo "<form method='get' action='" . Html::cleanInputText($self) . "' class='d-flex align-items-end gap-2 flex-wrap'>";
+echo "<input type='hidden' name='groups_id' value='" . (int) $groups_id . "'>";
 echo "<div><label class='form-label small mb-1'>" . __('De', 'gamification') . "</label>";
 echo "<input type='date' name='from' value='" . Html::cleanInputText($from) . "' max='" . date('Y-m-d') . "' class='form-control form-control-sm'></div>";
 echo "<div><label class='form-label small mb-1'>" . __('Até', 'gamification') . "</label>";
@@ -259,12 +324,13 @@ echo "</div>";
 
 // atalhos rápidos de período
 $presets = [7 => __('7 dias', 'gamification'), 30 => __('30 dias', 'gamification'), 90 => __('90 dias', 'gamification')];
+$group_q = $groups_id ? '&groups_id=' . $groups_id : '';
 echo "<div class='d-flex gap-2 mb-3 flex-wrap'>";
 foreach ($presets as $d => $lbl) {
     $pf  = date('Y-m-d', strtotime('-' . ($d - 1) . ' days'));
     $pt  = date('Y-m-d');
     $cls = ($from === $pf && $to === $pt) ? 'btn-primary' : 'btn-outline-secondary';
-    $url = $self . '?from=' . $pf . '&to=' . $pt;
+    $url = $self . '?from=' . $pf . '&to=' . $pt . $group_q;
     echo "<a href='" . Html::cleanInputText($url) . "' class='btn btn-sm {$cls}'>" . $lbl . "</a>";
 }
 echo "</div>";
